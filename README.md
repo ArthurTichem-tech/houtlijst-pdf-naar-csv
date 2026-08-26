@@ -7,7 +7,7 @@ Installeerbare webapp die houtbestellijsten volledig lokaal in de browser uitlee
 1. Voeg één of meerdere PDF-bestellijsten toe.
 2. De app leest project, offerte, opdrachtgever en netto houtregels uit.
 3. Bekijk elk toegevoegd PDF-bestand afzonderlijk en verwijder bestanden die niet meer nodig zijn.
-4. Controleer en bewerk de gevonden gegevens per PDF.
+4. Controleer en bewerk de gevonden gegevens per PDF. Alle getoonde teksten en cijfers zijn rechtstreeks aanklikbaar en aanpasbaar.
 5. Exporteer één afzonderlijke CSV per PDF. De bestandsnaam begint met `Ter Harmsel`, gevolgd door project, offerte en opdrachtgever.
 
 De app gebruikt OCR voor de visuele projectkop. PDF's en uitgelezen gegevens worden niet naar een externe dienst gestuurd.
