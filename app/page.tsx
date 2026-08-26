@@ -129,6 +129,8 @@ export default function Home() {
             <span className="status"><i />{activeDocument.rows.length} regels gevonden</span>
           </div>
 
+          <div className="edit-hint"><span aria-hidden="true">✎</span><p><strong>Alle gegevens zijn aanpasbaar.</strong> Klik op een tekst of getal hieronder om het zelf te wijzigen.</p></div>
+
           <div className="metadata-grid">
             <label><span>Project</span><input value={activeDocument.project} onChange={(event) => updateMeta('project', event.target.value)} /></label>
             <label><span>Offerte</span><input value={activeDocument.offerte} onChange={(event) => updateMeta('offerte', event.target.value)} /></label>
