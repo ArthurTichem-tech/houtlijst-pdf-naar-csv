@@ -1,0 +1,27 @@
+# Houtlijst
+
+Installeerbare webapp die houtbestellijsten volledig lokaal in de browser uitleest, laat controleren en als CSV exporteert.
+
+## Werkwijze
+
+1. Voeg één of meerdere PDF-bestellijsten toe.
+2. De app leest project, offerte, opdrachtgever en netto houtregels uit.
+3. Controleer en bewerk de gevonden gegevens.
+4. Exporteer één CSV per PDF. De bestandsnaam bestaat uit project, offerte en opdrachtgever.
+
+De app gebruikt OCR voor de visuele projectkop. PDF's en uitgelezen gegevens worden niet naar een externe dienst gestuurd.
+
+## Lokaal ontwikkelen
+
+```powershell
+pnpm install
+pnpm run dev
+```
+
+## Controleren
+
+```powershell
+pnpm run build
+```
+
+Publiceer een nieuwe versie via dezelfde Sites-publicatiestroom. Gebruikers van de geïnstalleerde webapp ontvangen de bijgewerkte bestanden automatisch via de service worker.
