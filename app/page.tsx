@@ -101,15 +101,8 @@ export default function Home() {
 
   return (
     <main className="app-shell">
-      <header className="topbar">
-        <a className="brand" href="#" aria-label="Houtlijst startpagina"><span className="brand-mark">H</span><span><strong>Houtlijst</strong><small>PDF naar CSV</small></span></a>
-        <div className="privacy-note"><span />Verwerking gebeurt op deze computer</div>
-      </header>
-
       <section className="workspace">
         <div className="intro">
-          <p className="eyebrow">Nieuwe omzetting</p>
-          <h1>Van bestellijst naar een<br />controleerbare CSV.</h1>
           <p className="lede">Voeg één of meerdere PDF-bestellijsten toe. Controleer de netto houtmaten en pas ze aan voordat je exporteert.</p>
         </div>
 
