@@ -91,8 +91,13 @@ export default function Home() {
     setDocuments((current) => current.map((document) => document.id === activeDocument.id ? { ...document, rows: document.rows.filter((row) => row.id !== rowId) } : document));
   }
 
-  function exportAll() {
-    documents.forEach((document, index) => window.setTimeout(() => downloadCsv(document), index * 180));
+  function removeDocument(documentId: string) {
+    const removedIndex = documents.findIndex((document) => document.id === documentId);
+    const remaining = documents.filter((document) => document.id !== documentId);
+    setDocuments(remaining);
+    if (activeDocument.id === documentId) {
+      setActiveId(remaining[Math.min(removedIndex, remaining.length - 1)]?.id ?? '');
+    }
   }
 
   function onDrop(event: DragEvent<HTMLButtonElement>) {
@@ -106,16 +111,26 @@ export default function Home() {
           <p className="lede">Voeg één of meerdere PDF-bestellijsten toe. Controleer de netto houtmaten en pas ze aan voordat je exporteert.</p>
         </div>
 
-        <input ref={inputRef} className="visually-hidden" type="file" accept="application/pdf,.pdf" multiple onChange={(event: ChangeEvent<HTMLInputElement>) => event.target.files && processFiles(event.target.files)} />
+        <input ref={inputRef} className="visually-hidden" type="file" accept="application/pdf,.pdf" multiple onChange={(event: ChangeEvent<HTMLInputElement>) => { if (event.target.files) processFiles(event.target.files); event.target.value = ''; }} />
         <button className={`dropzone ${dragging ? 'dragging' : ''}`} type="button" onClick={() => inputRef.current?.click()} onDragOver={(event) => { event.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={onDrop}>
           <span className="upload-icon">{processing ? '…' : '+'}</span>
           <span className="drop-title">{processing ? 'PDF-bestanden worden uitgelezen' : 'Sleep PDF-bestanden hierheen'}</span>
           <span className="drop-subtitle">{processing ? 'Even geduld, de gegevens blijven lokaal.' : 'of klik om bestanden te kiezen'}</span>
-          <span className="file-types">PDF · meerdere bestanden mogelijk</span>
+          <span className="file-types">PDF · ieder bestand krijgt een eigen CSV</span>
         </button>
         {message && <p className="app-message" role="alert">{message}</p>}
 
-        {documents.length > 1 && <nav className="document-tabs" aria-label="Ingelezen PDF-bestanden">{documents.map((document) => <button key={document.id} type="button" className={document.id === activeDocument.id ? 'active' : ''} onClick={() => setActiveId(document.id)}><span>{document.project || document.fileName}</span><small>{document.rows.length} regels</small></button>)}</nav>}
+        {documents.length > 0 && <section className="document-list" aria-labelledby="document-list-title">
+          <div className="document-list-heading"><h2 id="document-list-title">Toegevoegde PDF&apos;s</h2><span>{documents.length} {documents.length === 1 ? 'bestand' : 'bestanden'}</span></div>
+          <ul>{documents.map((document) => <li key={document.id} className={document.id === activeDocument.id ? 'active' : ''}>
+            <button className="document-select" type="button" onClick={() => setActiveId(document.id)} aria-pressed={document.id === activeDocument.id}>
+              <span className="document-icon">PDF</span>
+              <span className="document-name"><strong>{document.fileName}</strong><small>{document.project || 'Project onbekend'} · {document.rows.length} regels · eigen CSV</small></span>
+              <span className="document-state">{document.id === activeDocument.id ? 'Geselecteerd' : 'Bekijken'}</span>
+            </button>
+            <button className="document-remove" type="button" onClick={() => removeDocument(document.id)} aria-label={`${document.fileName} verwijderen`}>Verwijderen</button>
+          </li>)}</ul>
+        </section>}
 
         <section className={`review-panel ${isDemo ? 'demo' : ''}`} aria-label="Controle van uitgelezen gegevens">
           <div className="panel-heading">
@@ -138,7 +153,7 @@ export default function Home() {
             </tr>)}
           </tbody></table></div>
 
-          <footer className="panel-footer"><p><strong>{totalItems}</strong> stuks <span>·</span> <strong>{activeDocument.rows.length}</strong> maatregels</p><div className="footer-actions">{!isDemo && <button className="secondary-button" type="button" onClick={addRow}>+ Regel toevoegen</button>}<button className="export-button" type="button" disabled={isDemo || !activeDocument.rows.length} onClick={() => documents.length > 1 ? exportAll() : downloadCsv(activeDocument)}>{documents.length > 1 ? `${documents.length} CSV's exporteren` : 'CSV exporteren'} <span>→</span></button></div></footer>
+          <footer className="panel-footer"><p><strong>{totalItems}</strong> stuks <span>·</span> <strong>{activeDocument.rows.length}</strong> maatregels</p><div className="footer-actions">{!isDemo && <button className="secondary-button" type="button" onClick={addRow}>+ Regel toevoegen</button>}<button className="export-button" type="button" disabled={isDemo || !activeDocument.rows.length} onClick={() => downloadCsv(activeDocument)}>CSV van deze PDF exporteren <span>→</span></button></div></footer>
         </section>
       </section>
     </main>
