@@ -1,0 +1,47 @@
+name: Publiceer GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code ophalen
+        uses: actions/checkout@v4
+      - name: pnpm instellen
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Node.js instellen
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Packages installeren
+        run: pnpm install --frozen-lockfile
+      - name: Website bouwen
+        run: pnpm run build:pages
+      - name: GitHub Pages instellen
+        uses: actions/configure-pages@v5
+      - name: Websitepakket uploaden
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+      - name: Publiceren
+        id: deployment
+        uses: actions/deploy-pages@v4

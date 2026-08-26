@@ -24,4 +24,8 @@ pnpm run dev
 pnpm run build
 ```
 
-Publiceer een nieuwe versie via dezelfde Sites-publicatiestroom. Gebruikers van de geïnstalleerde webapp ontvangen de bijgewerkte bestanden automatisch via de service worker.
+## GitHub Pages
+
+Elke wijziging op de `main`-branch wordt via GitHub Actions automatisch als GitHub Page gepubliceerd. De workflow staat in `.github/workflows/deploy-pages.yml`.
+
+De bestaande Sites-publicatie kan daarnaast met `pnpm run build` worden bijgewerkt. Gebruikers van de geïnstalleerde webapp ontvangen bijgewerkte bestanden automatisch via de service worker.

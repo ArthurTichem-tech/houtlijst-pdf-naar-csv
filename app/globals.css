@@ -3,7 +3,7 @@
 :root { --ink:#1b2822; --muted:#68756f; --line:#dfe6e1; --forest:#194d36; --green:#287552; --cream:#f4f1e9; }
 * { box-sizing: border-box; }
 html { background:#f7f8f5; }
-body { margin:0; color:var(--ink); background:radial-gradient(circle at 8% -10%,#e5eee7 0,transparent 32rem),#f7f8f5; font-family:var(--font-geist-sans),Arial,sans-serif; }
+body { margin:0; color:var(--ink); background:radial-gradient(circle at 8% -10%,#e5eee7 0,transparent 32rem),#f7f8f5; font-family:Arial,sans-serif; }
 button,input { font:inherit; }
 .visually-hidden { position:absolute!important; width:1px!important; height:1px!important; overflow:hidden!important; clip:rect(0 0 0 0)!important; white-space:nowrap!important; }
 .app-shell { min-height:100vh; }

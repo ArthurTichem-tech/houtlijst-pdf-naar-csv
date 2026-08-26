@@ -26,8 +26,6 @@ type Product = {
   fixedLengthCaptured?: boolean;
 };
 
-type TextItemLike = { str: string; transform: number[] };
-
 function cleanText(value: string) {
   return value.replace(/\s+/g, ' ').trim();
 }
@@ -172,10 +170,11 @@ async function recognizeHeader(page: PDFPageProxy) {
   headerContext.drawImage(canvas, 0, 0, header.width, header.height, 0, 0, header.width, header.height);
 
   const { createWorker, PSM } = await import('tesseract.js');
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
   const worker = await createWorker('eng', 1, {
-    workerPath: '/tesseract-worker.min.js',
-    corePath: '/tesseract-core',
-    langPath: '/tessdata',
+    workerPath: `${basePath}/tesseract-worker.min.js`,
+    corePath: `${basePath}/tesseract-core`,
+    langPath: `${basePath}/tessdata`,
   });
   try {
     await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_BLOCK });
@@ -189,7 +188,7 @@ async function recognizeHeader(page: PDFPageProxy) {
 export async function parsePdf(file: File, onStage?: (message: string) => void): Promise<ParsedDocument> {
   onStage?.(`${file.name}: houtregels uitlezen…`);
   const pdfjs = await import('pdfjs-dist');
-  pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+  pdfjs.GlobalWorkerOptions.workerSrc = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/pdf.worker.min.mjs`;
 
   const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
   const lines: string[] = [];
@@ -198,8 +197,8 @@ export async function parsePdf(file: File, onStage?: (message: string) => void):
     const page = await pdf.getPage(pageNumber);
     const content = await page.getTextContent();
     const items = content.items
-      .filter((item): item is TextItemLike => 'str' in item && 'transform' in item)
-      .map((item) => ({ text: item.str, x: item.transform[4], y: item.transform[5] }))
+      .map((item) => 'str' in item ? { text: item.str, x: item.transform[4], y: item.transform[5] } : null)
+      .filter((item): item is { text: string; x: number; y: number } => item !== null)
       .sort((a, b) => Math.abs(b.y - a.y) > 2 ? b.y - a.y : a.x - b.x);
 
     const grouped: Array<{ y: number; parts: Array<{ x: number; text: string }> }> = [];

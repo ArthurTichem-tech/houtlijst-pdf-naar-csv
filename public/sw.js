@@ -1,7 +1,9 @@
 const CACHE = 'houtlijst-v1';
+const ROOT = self.registration.scope;
+const ASSETS = ['','manifest.webmanifest','icon-192.png','icon-512.png'].map((path) => new URL(path, ROOT).href);
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'])));
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));
   self.skipWaiting();
 });
 
@@ -16,5 +18,5 @@ self.addEventListener('fetch', (event) => {
     const copy = response.clone();
     caches.open(CACHE).then((cache) => cache.put(event.request, copy));
     return response;
-  }).catch(() => caches.match(event.request).then((cached) => cached || caches.match('/'))));
+  }).catch(() => caches.match(event.request).then((cached) => cached || caches.match(ROOT))));
 });
