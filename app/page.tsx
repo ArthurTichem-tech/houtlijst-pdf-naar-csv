@@ -31,7 +31,7 @@ function downloadCsv(document: ParsedDocument) {
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
   const anchor = window.document.createElement('a');
   anchor.href = url;
-  anchor.download = `${[document.project, document.offerte, document.opdrachtgever].map(cleanFilePart).join(' - ')}.csv`;
+  anchor.download = `Ter Harmsel ${[document.project, document.offerte, document.opdrachtgever].map(cleanFilePart).join(' - ')}.csv`;
   anchor.click();
   URL.revokeObjectURL(url);
 }
