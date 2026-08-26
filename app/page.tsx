@@ -3,18 +3,6 @@
 import { ChangeEvent, DragEvent, useMemo, useRef, useState } from 'react';
 import { buildNumber, parsePdf, ParsedDocument, TimberRow } from '@/lib/pdf-parser';
 
-const demoRows: TimberRow[] = [
-  { id: 'demo-1', nummer: '2449 Wit', breedte: 60, hoogte: 89, lengte: 2449, aantal: 2, profiel: '' },
-  { id: 'demo-2', nummer: '2449 A Wit', breedte: 44, hoogte: 127, lengte: 2449, aantal: 56, profiel: 'A' },
-  { id: 'demo-3', nummer: '4694 B Wit', breedte: 44, hoogte: 127, lengte: 4694, aantal: 2, profiel: 'B' },
-  { id: 'demo-4', nummer: '1000 schuin', breedte: 21, hoogte: 48, lengte: 1000, aantal: 48, profiel: 'schuin' },
-];
-
-const demoDocument: ParsedDocument = {
-  id: 'demo', fileName: 'voorbeeld.pdf', project: 'W26-0056-21', offerte: 'O25-0271',
-  opdrachtgever: 'Vastbouw BV', rows: demoRows, warnings: [],
-};
-
 function cleanFilePart(value: string) {
   return value.trim().replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-').replace(/\s+/g, ' ').replace(/[. ]+$/g, '') || 'onbekend';
 }
@@ -43,9 +31,8 @@ export default function Home() {
   const [processing, setProcessing] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [message, setMessage] = useState('');
-  const activeDocument = documents.find((document) => document.id === activeId) ?? documents[0] ?? demoDocument;
-  const isDemo = documents.length === 0;
-  const totalItems = useMemo(() => activeDocument.rows.reduce((sum, row) => sum + Number(row.aantal || 0), 0), [activeDocument]);
+  const activeDocument = documents.find((document) => document.id === activeId) ?? documents[0];
+  const totalItems = useMemo(() => activeDocument?.rows.reduce((sum, row) => sum + Number(row.aantal || 0), 0) ?? 0, [activeDocument]);
 
   async function processFiles(fileList: FileList | File[]) {
     const files = Array.from(fileList).filter((file) => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'));
@@ -66,10 +53,12 @@ export default function Home() {
   }
 
   function updateMeta(field: 'project' | 'offerte' | 'opdrachtgever', value: string) {
+    if (!activeDocument) return;
     setDocuments((current) => current.map((document) => document.id === activeDocument.id ? { ...document, [field]: value } : document));
   }
 
   function updateRow(rowId: string, field: keyof TimberRow, value: string) {
+    if (!activeDocument) return;
     setDocuments((current) => current.map((document) => {
       if (document.id !== activeDocument.id) return document;
       const rows = document.rows.map((row) => {
@@ -83,11 +72,13 @@ export default function Home() {
   }
 
   function addRow() {
+    if (!activeDocument) return;
     const row: TimberRow = { id: crypto.randomUUID(), nummer: '0 Wit', breedte: 0, hoogte: 0, lengte: 0, aantal: 1, profiel: '' };
     setDocuments((current) => current.map((document) => document.id === activeDocument.id ? { ...document, rows: [...document.rows, row] } : document));
   }
 
   function removeRow(rowId: string) {
+    if (!activeDocument) return;
     setDocuments((current) => current.map((document) => document.id === activeDocument.id ? { ...document, rows: document.rows.filter((row) => row.id !== rowId) } : document));
   }
 
@@ -95,7 +86,7 @@ export default function Home() {
     const removedIndex = documents.findIndex((document) => document.id === documentId);
     const remaining = documents.filter((document) => document.id !== documentId);
     setDocuments(remaining);
-    if (activeDocument.id === documentId) {
+    if (activeDocument?.id === documentId) {
       setActiveId(remaining[Math.min(removedIndex, remaining.length - 1)]?.id ?? '');
     }
   }
@@ -132,29 +123,29 @@ export default function Home() {
           </li>)}</ul>
         </section>}
 
-        <section className={`review-panel ${isDemo ? 'demo' : ''}`} aria-label="Controle van uitgelezen gegevens">
+        {activeDocument && <section className="review-panel" aria-label="Controle van uitgelezen gegevens">
           <div className="panel-heading">
-            <div><p className="eyebrow">{isDemo ? 'Voorbeeldweergave' : 'Controleer vóór export'}</p><h2>{activeDocument.project || 'Project onbekend'}</h2><p>{activeDocument.fileName}</p></div>
+            <div><p className="eyebrow">Controleer vóór export</p><h2>{activeDocument.project || 'Project onbekend'}</h2><p>{activeDocument.fileName}</p></div>
             <span className="status"><i />{activeDocument.rows.length} regels gevonden</span>
           </div>
 
-          {!isDemo && <div className="metadata-grid">
+          <div className="metadata-grid">
             <label><span>Project</span><input value={activeDocument.project} onChange={(event) => updateMeta('project', event.target.value)} /></label>
             <label><span>Offerte</span><input value={activeDocument.offerte} onChange={(event) => updateMeta('offerte', event.target.value)} /></label>
             <label><span>Opdrachtgever</span><input value={activeDocument.opdrachtgever} onChange={(event) => updateMeta('opdrachtgever', event.target.value)} /></label>
-          </div>}
+          </div>
 
           {activeDocument.warnings.length > 0 && <div className="warning-list">{activeDocument.warnings.map((warning) => <p key={warning}>Controle nodig: {warning}</p>)}</div>}
 
           <div className="table-wrap"><table><thead><tr><th>Nummer</th><th>Breedte</th><th>Hoogte</th><th>Lengte</th><th>Aantal</th><th>Profiel</th><th aria-label="Acties" /></tr></thead><tbody>
             {activeDocument.rows.map((row) => <tr key={row.id}>
-              {(['nummer', 'breedte', 'hoogte', 'lengte', 'aantal', 'profiel'] as const).map((field) => <td key={field}><input aria-label={`${field} van ${row.nummer}`} value={row[field]} readOnly={isDemo} inputMode={['breedte', 'hoogte', 'lengte', 'aantal'].includes(field) ? 'numeric' : 'text'} onChange={(event) => updateRow(row.id, field, event.target.value)} /></td>)}
-              <td><button className="row-menu" type="button" disabled={isDemo} onClick={() => removeRow(row.id)} aria-label={`Regel ${row.nummer} verwijderen`}>×</button></td>
+              {(['nummer', 'breedte', 'hoogte', 'lengte', 'aantal', 'profiel'] as const).map((field) => <td key={field}><input aria-label={`${field} van ${row.nummer}`} value={row[field]} inputMode={['breedte', 'hoogte', 'lengte', 'aantal'].includes(field) ? 'numeric' : 'text'} onChange={(event) => updateRow(row.id, field, event.target.value)} /></td>)}
+              <td><button className="row-menu" type="button" onClick={() => removeRow(row.id)} aria-label={`Regel ${row.nummer} verwijderen`}>×</button></td>
             </tr>)}
           </tbody></table></div>
 
-          <footer className="panel-footer"><p><strong>{totalItems}</strong> stuks <span>·</span> <strong>{activeDocument.rows.length}</strong> maatregels</p><div className="footer-actions">{!isDemo && <button className="secondary-button" type="button" onClick={addRow}>+ Regel toevoegen</button>}<button className="export-button" type="button" disabled={isDemo || !activeDocument.rows.length} onClick={() => downloadCsv(activeDocument)}>CSV van deze PDF exporteren <span>→</span></button></div></footer>
-        </section>
+          <footer className="panel-footer"><p><strong>{totalItems}</strong> stuks <span>·</span> <strong>{activeDocument.rows.length}</strong> maatregels</p><div className="footer-actions"><button className="secondary-button" type="button" onClick={addRow}>+ Regel toevoegen</button><button className="export-button" type="button" disabled={!activeDocument.rows.length} onClick={() => downloadCsv(activeDocument)}>CSV van deze PDF exporteren <span>→</span></button></div></footer>
+        </section>}
       </section>
     </main>
   );
