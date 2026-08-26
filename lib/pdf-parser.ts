@@ -59,6 +59,19 @@ function parseProduct(line: string): Product | null {
     };
   }
 
+  // Productregels kunnen vrije omschrijvingen gebruiken (bijvoorbeeld Stel,
+  // Spouwlat of een projectspecifieke tekst). De eerste maat is de bruto
+  // bestelmaat; de laatste maat op dezelfde houtregel is de netto houtmaat.
+  const dimensions = [...line.matchAll(/0*(\d{2,3})\s*x\s*0*(\d{2,3})(?:\s*([A-Za-z])(?=\s|$))?/gi)];
+  if (/\bVUR(?:EN)?\b/i.test(line) && dimensions.length >= 2) {
+    const net = dimensions.at(-1)!;
+    return {
+      breedte: Number(net[1]),
+      hoogte: Number(net[2]),
+      profiel: normalizeProfile(net[3]),
+    };
+  }
+
   const stel = line.match(/\bStel\s+0*(\d{2,3})\s*x\s*0*(\d{2,3})(?:\s*([A-Za-z])(?=\s|$))?/i);
   if (stel) {
     return {
