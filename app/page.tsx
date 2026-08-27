@@ -31,18 +31,19 @@ export default function Home() {
   const [processing, setProcessing] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageTone, setMessageTone] = useState<'info' | 'warning' | 'error'>('info');
   const activeDocument = documents.find((document) => document.id === activeId) ?? documents[0];
   const totalItems = useMemo(() => activeDocument?.rows.reduce((sum, row) => sum + Number(row.aantal || 0), 0) ?? 0, [activeDocument]);
 
   async function processFiles(fileList: FileList | File[]) {
     const files = Array.from(fileList).filter((file) => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'));
-    if (!files.length) { setMessage('Kies één of meerdere PDF-bestanden.'); return; }
+    if (!files.length) { setMessageTone('warning'); setMessage('Kies één of meerdere PDF-bestanden.'); return; }
     setProcessing(true); setMessage('');
     const parsed: ParsedDocument[] = [];
     let failed = false;
     for (const file of files) {
-      try { parsed.push(await parsePdf(file, setMessage)); }
-      catch (error) { failed = true; setMessage(`${file.name} kon niet worden uitgelezen: ${error instanceof Error ? error.message : 'onbekende fout'}`); }
+      try { parsed.push(await parsePdf(file, (nextMessage) => { setMessageTone('info'); setMessage(nextMessage); })); }
+      catch (error) { failed = true; setMessageTone('error'); setMessage(`${file.name} kon niet worden uitgelezen: ${error instanceof Error ? error.message : 'onbekende fout'}`); }
     }
     if (parsed.length) {
       setDocuments((current) => [...current, ...parsed]);
@@ -109,7 +110,7 @@ export default function Home() {
           <span className="drop-subtitle">{processing ? 'Even geduld, de gegevens blijven lokaal.' : 'of klik om bestanden te kiezen'}</span>
           <span className="file-types">PDF · ieder bestand krijgt een eigen CSV</span>
         </button>
-        {message && <p className="app-message" role="alert">{message}</p>}
+        {message && <p className={`app-message ${messageTone}`} role={messageTone === 'error' ? 'alert' : 'status'}>{message}</p>}
 
         {documents.length > 0 && <section className="document-list" aria-labelledby="document-list-title">
           <div className="document-list-heading"><h2 id="document-list-title">Toegevoegde PDF&apos;s</h2><span>{documents.length} {documents.length === 1 ? 'bestand' : 'bestanden'}</span></div>
