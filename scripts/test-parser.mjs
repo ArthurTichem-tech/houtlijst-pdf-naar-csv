@@ -32,6 +32,9 @@ console.log(JSON.stringify({
   offerte: result.offerte,
   opdrachtgever: result.opdrachtgever,
   rowCount: result.rows.length,
+  recognitionStatus: result.recognitionStatus,
+  qualityIssues: result.qualityIssues,
+  unrecognizedLines: result.unrecognizedLines,
   rows: result.rows,
   warnings: result.warnings,
 }, null, 2));

@@ -19,6 +19,9 @@ export type ParsedDocument = {
   opdrachtgever: string;
   rows: TimberRow[];
   warnings: string[];
+  recognitionStatus: 'complete' | 'review' | 'incomplete';
+  qualityIssues: string[];
+  unrecognizedLines: string[];
 };
 
 type Product = {
@@ -28,6 +31,9 @@ type Product = {
   omitWhite?: boolean;
   fixedLength?: number;
   fixedLengthCaptured?: boolean;
+  capturedRows?: number;
+  capturedAantal?: number;
+  closed?: boolean;
 };
 
 function cleanText(value: string) {
@@ -51,9 +57,18 @@ function normalizeProfile(value = '') {
   return value.length === 1 ? value.toUpperCase() : value.toLowerCase();
 }
 
+function productName(product: Product) {
+  return `${product.breedte}x${product.hoogte}${product.profiel ? ` ${product.profiel}` : ''}`;
+}
+
+function recognitionStatus(rows: TimberRow[], warnings: string[], qualityIssues: string[]) {
+  if (!rows.length || qualityIssues.length) return 'incomplete' as const;
+  return warnings.length ? 'review' as const : 'complete' as const;
+}
+
 function parseProduct(line: string): Product | null {
   const omitWhite = /\bspouw\s*lat\b/i.test(line);
-  const schoren = [...line.matchAll(/\bSchoor\s+0*(\d{2,3})\s*x\s*0*(\d{2,3})\s+([A-Za-z]+\d*)/gi)];
+  const schoren = [...line.matchAll(/\bSchoor\s+0*(\d{2,3})\s*[x×]\s*0*(\d{2,3})\s+([A-Za-z]+\d*)/gi)];
   const schoor = schoren.at(-1);
   if (schoor) {
     const lengths = [...line.matchAll(/\b(\d{3,5})\s*mm\b/gi)];
@@ -69,8 +84,8 @@ function parseProduct(line: string): Product | null {
   // Productregels kunnen vrije omschrijvingen gebruiken (bijvoorbeeld Stel,
   // Spouwlat of een projectspecifieke tekst). De eerste maat is de bruto
   // bestelmaat; de laatste maat op dezelfde houtregel is de netto houtmaat.
-  const dimensions = [...line.matchAll(/0*(\d{2,3})\s*x\s*0*(\d{2,3})(?:\s*([A-Za-z])(?=\s|$))?/gi)];
-  if (/\b(?:VUR(?:EN)?|RUW|SLS|FSC)\b/i.test(line) && dimensions.length >= 2) {
+  const dimensions = [...line.matchAll(/0*(\d{2,3})\s*[x×]\s*0*(\d{2,3})(?:\s*(?:[-(]\s*)?([A-Za-z])\s*\)?)?(?=\s|$)/gi)];
+  if (/\b(?:VUR|RUW|SLS)\b/i.test(line) && dimensions.length >= 2) {
     const net = dimensions.at(-1)!;
     return {
       breedte: Number(net[1]),
@@ -80,7 +95,7 @@ function parseProduct(line: string): Product | null {
     };
   }
 
-  const stel = line.match(/\bStel\s+0*(\d{2,3})\s*x\s*0*(\d{2,3})(?:\s*([A-Za-z])(?=\s|$))?/i);
+  const stel = line.match(/\bStel\s+0*(\d{2,3})\s*[x×]\s*0*(\d{2,3})(?:\s*(?:[-(]\s*)?([A-Za-z])\s*\)?(?=\s|$))?/i);
   if (stel) {
     return {
       breedte: Number(stel[1]),
@@ -90,12 +105,12 @@ function parseProduct(line: string): Product | null {
     };
   }
 
-  const sls = line.match(/\bVuren\s+0*(\d{2,3})\s*x\s*0*(\d{2,3})\s+Vuren\s+SLS\b/i);
+  const sls = line.match(/\bVuren\s+0*(\d{2,3})\s*[x×]\s*0*(\d{2,3})\s+Vuren\s+SLS\b/i);
   if (sls) {
     return { breedte: Number(sls[1]), hoogte: Number(sls[2]), profiel: '', omitWhite };
   }
 
-  const raw = line.match(/\bVUR\s+RUW\s+0*(\d{2,3})\s*x\s*0*(\d{2,3})([A-Za-z])\b/i);
+  const raw = line.match(/\bVUR\s+RUW\s+0*(\d{2,3})\s*[x×]\s*0*(\d{2,3})([A-Za-z])\b/i);
   if (raw && !/\bStel\b/i.test(line)) {
     return {
       breedte: Number(raw[1]),
@@ -118,22 +133,58 @@ export function buildNumber(row: Pick<TimberRow, 'breedte' | 'hoogte' | 'lengte'
 export function parseTextLines(lines: string[], fileName: string): ParsedDocument {
   const rows: TimberRow[] = [];
   const warnings: string[] = [];
+  const qualityIssues: string[] = [];
+  const unrecognizedLines: string[] = [];
   let product: Product | null = null;
+
+  function addQualityIssue(issue: string, line?: string) {
+    if (!qualityIssues.includes(issue)) qualityIssues.push(issue);
+    if (line && !unrecognizedLines.includes(line)) unrecognizedLines.push(line);
+  }
+
+  function finalizeProduct(current: Product | null) {
+    if (current && !current.capturedRows) {
+      addQualityIssue(`Houtmaat ${productName(current)} heeft geen herkende aantallen.`);
+    }
+  }
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
-    // Bij OCR of een afwijkende PDF-layout kan de bruto maat op de vorige
-    // tekstregel staan en de netto maat op de huidige. Alleen regels die zelf
-    // een maat bevatten worden samengevoegd, zodat aantallen niet verdwijnen.
-    const continuedProduct = /\d\s*x\s*\d/i.test(line) && index > 0
-      ? parseProduct(`${lines[index - 1]} ${line}`)
-      : null;
+    // Bij OCR of een afwijkende PDF-layout kunnen bruto maat, omschrijving en
+    // netto maat over meerdere regels zijn verdeeld. Alleen een regel die zelf
+    // een maat bevat activeert dit korte terugkijkvenster.
+    let continuedProduct: Product | null = null;
+    if (/\d{2,3}\s*[x×]\s*\d{2,3}(?!\d)/i.test(line)) {
+      for (let lookBehind = 1; lookBehind <= Math.min(3, index) && !continuedProduct; lookBehind += 1) {
+        continuedProduct = parseProduct(lines.slice(index - lookBehind, index + 1).join(' '));
+      }
+    }
     const nextProduct = parseProduct(line) ?? continuedProduct;
     if (nextProduct) {
-      product = nextProduct;
+      finalizeProduct(product);
+      product = { ...nextProduct, capturedRows: 0, capturedAantal: 0 };
       continue;
     }
     if (!product) continue;
+
+    const declaredTotal = line.match(/^\s*(\d+)\s+[\d.,]+\s*m[12]\b/i);
+    if (declaredTotal) {
+      const expectedAantal = Number(declaredTotal[1]);
+      if ((product.capturedAantal ?? 0) !== expectedAantal) {
+        addQualityIssue(
+          `Totaalcontrole ${productName(product)}: ${expectedAantal} stuks vermeld, ${(product.capturedAantal ?? 0)} uitgelezen.`,
+          line,
+        );
+      }
+      product.closed = true;
+      continue;
+    }
+
+    if (product.fixedLengthCaptured && /^\s*\d+\s*$/.test(line)) {
+      product.closed = true;
+      continue;
+    }
+    if (product.closed) continue;
 
     const sizedRow = line.match(/^\s*(\d+)\s+(\d{2,5})\s*mm\b/i);
     if (sizedRow) {
@@ -148,6 +199,8 @@ export function parseTextLines(lines: string[], fileName: string): ParsedDocumen
       } as TimberRow;
       row.nummer = buildNumber(row);
       rows.push(row);
+      product.capturedRows = (product.capturedRows ?? 0) + 1;
+      product.capturedAantal = (product.capturedAantal ?? 0) + row.aantal;
       continue;
     }
 
@@ -170,9 +223,22 @@ export function parseTextLines(lines: string[], fileName: string): ParsedDocumen
         row.nummer = buildNumber(row);
         rows.push(row);
         product.fixedLengthCaptured = true;
+        product.capturedRows = (product.capturedRows ?? 0) + 1;
+        product.capturedAantal = (product.capturedAantal ?? 0) + row.aantal;
+        continue;
       }
     }
+
+    const looksLikeUnknownQuantity =
+      (/^\s*\d+\s+\d{2,5}(?:\s|$)/.test(line) && !/[x×]/i.test(line)) ||
+      /^\s*\d+\s*[x×]\s*\d{2,5}(?:\s|$)/i.test(line) ||
+      /^\s*\d+\s+stuks?\s+\d{2,5}\b/i.test(line);
+    if (looksLikeUnknownQuantity) {
+      addQualityIssue(`Mogelijke aantallenregel bij ${productName(product)} niet herkend.`, line);
+    }
   }
+
+  finalizeProduct(product);
 
   const project = captureLabel(lines, 'Project') || fileName.match(/W\d{2}-\d{4}-\d+/i)?.[0] || '';
   const offerte = captureLabel(lines, 'Offerte');
@@ -181,9 +247,13 @@ export function parseTextLines(lines: string[], fileName: string): ParsedDocumen
   if (!offerte) warnings.push('Offertenummer niet gevonden.');
   if (!opdrachtgever) warnings.push('Opdrachtgever niet gevonden.');
   if (!rows.length) warnings.push('Geen houtregels gevonden; controleer of dit PDF-formaat wordt ondersteund.');
+  warnings.unshift(...qualityIssues);
 
   return {
     id: crypto.randomUUID(), fileName, project, offerte, opdrachtgever, rows, warnings,
+    recognitionStatus: recognitionStatus(rows, warnings, qualityIssues),
+    qualityIssues,
+    unrecognizedLines,
   };
 }
 
@@ -283,15 +353,31 @@ export async function parsePdf(file: File, onStage?: (message: string) => void):
   let parsed = parseTextLines(lines.filter(Boolean), file.name);
   let scannedLines: string[] = [];
 
-  if (!parsed.rows.length) {
-    onStage?.(`${file.name}: gescande pagina's herkennen…`);
+  if (!parsed.rows.length || parsed.recognitionStatus === 'incomplete') {
+    onStage?.(`${file.name}: pagina's aanvullend controleren…`);
     try {
       scannedLines = await recognizeScannedPages(pdf);
-      parsed = parseTextLines([...lines, ...scannedLines].filter(Boolean), file.name);
+      const ocrParsed = parseTextLines(scannedLines.filter(Boolean), file.name);
+      const statusRank = { incomplete: 0, review: 1, complete: 2 };
+      const ocrIsBetter = ocrParsed.rows.length > parsed.rows.length ||
+        (ocrParsed.rows.length === parsed.rows.length && statusRank[ocrParsed.recognitionStatus] > statusRank[parsed.recognitionStatus]);
+      if (ocrIsBetter) {
+        ocrParsed.project ||= parsed.project;
+        ocrParsed.offerte ||= parsed.offerte;
+        ocrParsed.opdrachtgever ||= parsed.opdrachtgever;
+        parsed = ocrParsed;
+      }
     } catch {
-      parsed.warnings.push('De gescande houtregels konden niet automatisch worden herkend; controleer deze PDF handmatig.');
+      parsed.warnings.push('De aanvullende visuele controle kon niet worden uitgevoerd; controleer deze PDF handmatig.');
     }
   }
+
+  parsed.warnings = parsed.warnings.filter((warning) =>
+    !(parsed.project && warning.startsWith('Projectnummer')) &&
+    !(parsed.offerte && warning.startsWith('Offertenummer')) &&
+    !(parsed.opdrachtgever && warning.startsWith('Opdrachtgever')),
+  );
+  parsed.recognitionStatus = recognitionStatus(parsed.rows, parsed.warnings, parsed.qualityIssues);
 
   if (!parsed.offerte || !parsed.opdrachtgever) {
     onStage?.(`${file.name}: projectkop herkennen…`);
@@ -305,8 +391,10 @@ export async function parsePdf(file: File, onStage?: (message: string) => void):
         !(parsed.offerte && warning.startsWith('Offertenummer')) &&
         !(parsed.opdrachtgever && warning.startsWith('Opdrachtgever')),
       );
+      parsed.recognitionStatus = recognitionStatus(parsed.rows, parsed.warnings, parsed.qualityIssues);
     } catch {
       parsed.warnings.push('De visuele projectkop kon niet automatisch worden herkend; vul de ontbrekende velden handmatig in.');
+      parsed.recognitionStatus = recognitionStatus(parsed.rows, parsed.warnings, parsed.qualityIssues);
     }
   }
   return parsed;

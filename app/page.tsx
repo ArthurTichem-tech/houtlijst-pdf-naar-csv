@@ -3,6 +3,12 @@
 import { ChangeEvent, DragEvent, useMemo, useRef, useState } from 'react';
 import { buildNumber, parsePdf, ParsedDocument, TimberRow } from '@/lib/pdf-parser';
 
+const recognitionLabels: Record<ParsedDocument['recognitionStatus'], string> = {
+  complete: 'Volledig herkend',
+  review: 'Controle aanbevolen',
+  incomplete: 'Mogelijk onvolledig',
+};
+
 function cleanFilePart(value: string) {
   return value.trim().replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-').replace(/\s+/g, ' ').replace(/[. ]+$/g, '') || 'onbekend';
 }
@@ -117,7 +123,7 @@ export default function Home() {
           <ul>{documents.map((document) => <li key={document.id} className={document.id === activeDocument.id ? 'active' : ''}>
             <button className="document-select" type="button" onClick={() => setActiveId(document.id)} aria-pressed={document.id === activeDocument.id}>
               <span className="document-icon">PDF</span>
-              <span className="document-name"><strong>{document.fileName}</strong><small>{document.project || 'Project onbekend'} · {document.rows.length} regels · eigen CSV</small></span>
+              <span className="document-name"><strong>{document.fileName}</strong><small>{document.project || 'Project onbekend'} · {document.rows.length} regels · <span className={`document-quality ${document.recognitionStatus}`}>{recognitionLabels[document.recognitionStatus]}</span></small></span>
               <span className="document-state">{document.id === activeDocument.id ? 'Geselecteerd' : 'Bekijken'}</span>
             </button>
             <button className="document-remove" type="button" onClick={() => removeDocument(document.id)} aria-label={`${document.fileName} verwijderen`}>Verwijderen</button>
@@ -127,7 +133,7 @@ export default function Home() {
         {activeDocument && <section className="review-panel" aria-label="Controle van uitgelezen gegevens">
           <div className="panel-heading">
             <div><p className="eyebrow">Controleer vóór export</p><h2>{activeDocument.project || 'Project onbekend'}</h2><p>{activeDocument.fileName}</p></div>
-            <span className="status"><i />{activeDocument.rows.length} regels gevonden</span>
+            <span className={`status ${activeDocument.recognitionStatus}`}><i />{recognitionLabels[activeDocument.recognitionStatus]} · {activeDocument.rows.length} regels</span>
           </div>
 
           <div className="edit-hint"><span aria-hidden="true">✎</span><p><strong>Alle gegevens zijn aanpasbaar.</strong> Klik op een tekst of getal hieronder om het zelf te wijzigen.</p></div>
@@ -138,7 +144,7 @@ export default function Home() {
             <label><span>Opdrachtgever</span><input value={activeDocument.opdrachtgever} onChange={(event) => updateMeta('opdrachtgever', event.target.value)} /></label>
           </div>
 
-          {activeDocument.warnings.length > 0 && <div className="warning-list">{activeDocument.warnings.map((warning) => <p key={warning}>Controle nodig: {warning}</p>)}</div>}
+          {activeDocument.warnings.length > 0 && <div className={`warning-list ${activeDocument.recognitionStatus}`}>{activeDocument.warnings.map((warning) => <p key={warning}>Controle nodig: {warning}</p>)}</div>}
 
           <div className="table-wrap"><table><thead><tr><th>Nummer</th><th>Breedte</th><th>Hoogte</th><th>Lengte</th><th>Aantal</th><th>Profiel</th><th aria-label="Acties" /></tr></thead><tbody>
             {activeDocument.rows.map((row) => <tr key={row.id}>
