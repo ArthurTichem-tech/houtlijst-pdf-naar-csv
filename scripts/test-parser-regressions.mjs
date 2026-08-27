@@ -153,4 +153,46 @@ verifyPdfVariant({
   ],
 });
 
-console.log('Parserregressies voor 5 PDF-varianten geslaagd.');
+const completeRecognition = parseTextLines([
+  'Project: W27-0001 Offerte: O27-0001 Opdrachtgever: Testbouw BV',
+  'VUR RUW 050×075',
+  'toekomstige vrije omschrijving verdeeld over meerdere regels',
+  'netto maat 36×70 (B) mm Vuren FSC',
+  '2 1507 mm 2/2',
+  '2 3.014 m1',
+], 'volledig-herkend.pdf');
+assert.deepEqual(signatures(completeRecognition), ['36x70|1507|2|B|1507 B Wit']);
+assert.equal(completeRecognition.recognitionStatus, 'complete');
+assert.deepEqual(completeRecognition.qualityIssues, []);
+
+const reviewRecognition = parseTextLines([
+  'VUR RUW 050x075 Vulhout Vuren 36x70 mm Vuren FSC',
+  '2 1507 mm 2/2',
+  '2 3.014 m1',
+], 'metadata-ontbreekt.pdf');
+assert.equal(reviewRecognition.recognitionStatus, 'review');
+
+const mismatchedTotal = parseTextLines([
+  'Project: W27-0002 Offerte: O27-0002 Opdrachtgever: Testbouw BV',
+  'VUR RUW 050x075 Vulhout Vuren 36x70 mm Vuren FSC',
+  '2 1507 mm 2/2',
+  '3 4.521 m1',
+], 'afwijkend-totaal.pdf');
+assert.equal(mismatchedTotal.recognitionStatus, 'incomplete');
+assert.match(mismatchedTotal.qualityIssues[0], /3 stuks vermeld, 2 uitgelezen/);
+
+const missingQuantities = parseTextLines([
+  'Project: W27-0003 Offerte: O27-0003 Opdrachtgever: Testbouw BV',
+  'VUR RUW 050x075 Vulhout Vuren 36x70 mm Vuren FSC',
+  'VUR RUW 050x100 Vulhout Vuren 44x92 mm Vuren FSC',
+  '2 1507 stuks 2/2',
+  '4x1500 mm 4/3',
+  '3 stuks 1200 mm 3/4',
+], 'ontbrekende-aantallen.pdf');
+assert.equal(missingQuantities.recognitionStatus, 'incomplete');
+assert.equal(missingQuantities.unrecognizedLines[0], '2 1507 stuks 2/2');
+assert.equal(missingQuantities.unrecognizedLines.length, 3);
+assert.ok(missingQuantities.qualityIssues.some((issue) => issue.includes('36x70 heeft geen herkende aantallen')));
+assert.ok(missingQuantities.qualityIssues.some((issue) => issue.includes('Mogelijke aantallenregel bij 44x92')));
+
+console.log('Parserregressies voor 5 PDF-varianten en betrouwbaarheidscontroles geslaagd.');
