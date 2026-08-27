@@ -34,6 +34,8 @@ jobs:
           cache: pnpm
       - name: Packages installeren
         run: pnpm install --frozen-lockfile
+      - name: PDF-varianten testen
+        run: pnpm run test:parser
       - name: Website bouwen
         run: pnpm run build:pages
       - name: GitHub Pages instellen

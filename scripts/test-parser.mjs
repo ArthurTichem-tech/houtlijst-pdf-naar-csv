@@ -24,4 +24,14 @@ for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
 }
 
 const result = parseTextLines(lines.filter(Boolean), input.split(/[\\/]/).at(-1));
-console.log(JSON.stringify({ headerLines: lines.slice(0, 28), metadataLines: lines.filter((line) => /Project|Offerte|Opdrachtgever|Vastbouw|O25-/i.test(line)), project: result.project, offerte: result.offerte, opdrachtgever: result.opdrachtgever, rowCount: result.rows.length, firstRows: result.rows.slice(0, 3), warnings: result.warnings }, null, 2));
+console.log(JSON.stringify({
+  headerLines: lines.slice(0, 28),
+  parserLines: lines.filter((line) => /\bVUR(?:EN)?\b/i.test(line) || /^\s*\d+\s+\d{2,5}\s*mm\b/i.test(line)),
+  metadataLines: lines.filter((line) => /Project|Offerte|Opdrachtgever|Vastbouw|O25-/i.test(line)),
+  project: result.project,
+  offerte: result.offerte,
+  opdrachtgever: result.opdrachtgever,
+  rowCount: result.rows.length,
+  rows: result.rows,
+  warnings: result.warnings,
+}, null, 2));
