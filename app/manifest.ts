@@ -10,8 +10,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Zet houtbestellijsten lokaal om naar controleerbare CSV-bestanden.',
     start_url: `${basePath}/`,
     display: 'standalone',
-    background_color: '#f7f8f5',
-    theme_color: '#194d36',
+    background_color: '#f3f3f1',
+    theme_color: '#111820',
     lang: 'nl',
     icons: [
       { src: `${basePath}/icon-192.png`, sizes: '192x192', type: 'image/png' },

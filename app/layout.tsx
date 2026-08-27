@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Houtlijst — PDF naar CSV',
     description: 'Van bestellijst naar een controleerbare CSV.',
-    images: [{ url: `${basePath}/og.png`, width: 1792, height: 1024, alt: 'Houtlijst zet een bestellijst om naar een controleerbare CSV' }],
+    images: [{ url: `${basePath}/og.png`, width: 1734, height: 907, alt: 'Houtlijst converter van PDF naar CSV' }],
   },
   twitter: {
     card: 'summary_large_image',
