@@ -130,11 +130,27 @@ verifyPdfVariant({
     '60x127|11995|2|C|11995 C Wit', '50x127|2405|6||2405 Wit', '60x200|1386|1||1386 Wit',
     '44x240|3585|2|B|3585 B Wit', '44x240|1304|2|B|1304 B Wit',
     '38x210|3453|2||3453 Wit', '38x210|1304|2||1304 Wit', '38x210|123|8||123 Wit', '38x210|123|14||123 Wit',
-    '21x48|1000|48|schuin|1000 schuin', '21x48|1500|4|schuin1|1500 schuin1',
+    '21x48|1000|48|schuin|1000 schuin', '21x48|1500|4|schuin|1500 schuin',
     '21x48|3240|2||3240', '21x48|2836|3||2836', '21x48|2746|3||2746', '21x48|2733|1||2733',
     '21x48|2690|1||2690', '21x48|2405|21||2405', '21x48|1816|7||1816', '21x48|1708|1||1708',
     '21x48|1670|1||1670', '21x48|1200|2||1200', '21x48|876|11||876', '21x48|841|1||841',
   ],
 });
 
-console.log('Parserregressies voor 4 PDF-varianten geslaagd.');
+verifyPdfVariant({
+  name: 'W25-0257_K61-1031+1033+Vurenhout+FSC+bestellijst.pdf',
+  lines: [
+    'Schoor 021x048 schuin Schoor 021x048 schuin 1000 mm Hans Oude',
+    '51 4/12-RA 4/12-RB 4/12-RC',
+    '51',
+    'Schoor 021x048 schuin1 Schoor 021x048 schuin 1500 mm Hans Oude',
+    '4 2/12-RZ 2/13-RZ',
+    '4',
+  ],
+  expected: [
+    '21x48|1000|51|schuin|1000 schuin',
+    '21x48|1500|4|schuin|1500 schuin',
+  ],
+});
+
+console.log('Parserregressies voor 5 PDF-varianten geslaagd.');
