@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createCsv } from '../lib/csv.ts';
 import { parseTextLines } from '../lib/pdf-parser.ts';
 
 function signatures(document) {
@@ -10,9 +11,11 @@ function signatures(document) {
 function verifyPdfVariant({ name, lines, expected }) {
   const document = parseTextLines(lines, name);
   assert.deepEqual(signatures(document), expected, `${name} veranderde onverwacht`);
+  assert.ok(document.rows.every((row) => row.beschrijving === ''), `${name} moet met lege beschrijvingen starten`);
+  return document;
 }
 
-verifyPdfVariant({
+const latestVariant = verifyPdfVariant({
   name: 'W25-0284-02_K61-1031+1033+Vurenhout+FSC+bestellijst.pdf',
   lines: [
     'VUR RUW 032x050 Spouwlat 27x44 mm Vuren FSC',
@@ -44,6 +47,12 @@ verifyPdfVariant({
     '38x130|1138|8||1138',
   ],
 });
+
+const emptyDescriptionCsv = createCsv(latestVariant);
+assert.equal(emptyDescriptionCsv.split('\r\n')[0], '\uFEFFNummer;Breedte;Hoogte;Lengte;Aantal;Profiel;Beschrijving');
+assert.ok(emptyDescriptionCsv.split('\r\n')[1].endsWith(';'), 'Beschrijving moet standaard leeg worden geëxporteerd');
+latestVariant.rows[0].beschrijving = 'Inkeping; links';
+assert.ok(createCsv(latestVariant).includes(';"Inkeping; links"'), 'Een ingevulde beschrijving moet veilig in de CSV komen');
 
 verifyPdfVariant({
   name: 'W25-0284-04_K61-1031+1033+Vurenhout+FSC+bestellijst.pdf',

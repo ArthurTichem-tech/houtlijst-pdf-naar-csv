@@ -6,6 +6,7 @@ export type TimberRow = {
   lengte: number;
   aantal: number;
   profiel: string;
+  beschrijving: string;
   omitWhite?: boolean;
 };
 
@@ -134,6 +135,7 @@ export function parseTextLines(lines: string[], fileName: string): ParsedDocumen
         lengte: Number(sizedRow[2]),
         aantal: Number(sizedRow[1]),
         profiel: product.profiel,
+        beschrijving: '',
         omitWhite: product.omitWhite,
       } as TimberRow;
       row.nummer = buildNumber(row);
@@ -151,6 +153,7 @@ export function parseTextLines(lines: string[], fileName: string): ParsedDocumen
           lengte: product.fixedLength,
           aantal: Number(quantity[1]),
           profiel: product.profiel,
+          beschrijving: '',
           omitWhite: product.omitWhite,
         } as TimberRow;
         row.nummer = buildNumber(row);
