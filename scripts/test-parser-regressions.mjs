@@ -46,6 +46,34 @@ verifyPdfVariant({
 });
 
 verifyPdfVariant({
+  name: 'W25-0237-02_K61-1031+1033+Vurenhout+FSC+bestellijst.pdf',
+  lines: [
+    'Omschrijving: binnenkozijnen Project: W25-0237-02',
+    'VUR RUW 050x075 Vulhout Vuren 36x70 mm Vuren FSC',
+    '2 1507 mm 2/2',
+    '6 1372mm 4/1 2/1a',
+    '4 1206 mm 4/3',
+    '2 1006 mm 2/4H',
+    '25 140 mm 8/1 4/1a 4/2 6/3 3/4H',
+    '39 21.582 m1',
+  ],
+  expected: [
+    '36x70|1507|2||1507 Wit',
+    '36x70|1372|6||1372 Wit',
+    '36x70|1206|4||1206 Wit',
+    '36x70|1006|2||1006 Wit',
+    '36x70|140|25||140 Wit',
+  ],
+});
+
+const splitProductDescription = parseTextLines([
+  'VUR RUW 050x075',
+  'onbekende toekomstige omschrijving vóór netto maat 36x70 mm Vuren FSC',
+  '2 1507 mm 2/2',
+], 'gesplitste-productregel.pdf');
+assert.deepEqual(signatures(splitProductDescription), ['36x70|1507|2||1507 Wit']);
+
+verifyPdfVariant({
   name: 'W25-0284-04_K61-1031+1033+Vurenhout+FSC+bestellijst.pdf',
   lines: [
     'VUR RUW 050x100 willekeurige productomschrijving Spouwlat 46x88 mm (onder LR doorloper)',
@@ -109,4 +137,4 @@ verifyPdfVariant({
   ],
 });
 
-console.log('Parserregressies voor 3 PDF-varianten geslaagd.');
+console.log('Parserregressies voor 4 PDF-varianten geslaagd.');
