@@ -1,15 +1,21 @@
 'use client';
 
 import { ChangeEvent, DragEvent, useMemo, useRef, useState } from 'react';
-import { createCsv } from '@/lib/csv';
 import { buildNumber, parsePdf, ParsedDocument, TimberRow } from '@/lib/pdf-parser';
 
 function cleanFilePart(value: string) {
   return value.trim().replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-').replace(/\s+/g, ' ').replace(/[. ]+$/g, '') || 'onbekend';
 }
 
+function csvValue(value: string | number) {
+  const text = String(value ?? '');
+  return /[;"\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
 function downloadCsv(document: ParsedDocument) {
-  const csv = createCsv(document);
+  const headers = ['Nummer', 'Breedte', 'Hoogte', 'Lengte', 'Aantal', 'Profiel'];
+  const rows = document.rows.map((row) => [row.nummer, row.breedte, row.hoogte, row.lengte, row.aantal, row.profiel]);
+  const csv = `\uFEFF${[headers, ...rows].map((row) => row.map(csvValue).join(';')).join('\r\n')}\r\n`;
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
   const anchor = window.document.createElement('a');
   anchor.href = url;
@@ -58,7 +64,7 @@ export default function Home() {
       const rows = document.rows.map((row) => {
         if (row.id !== rowId) return row;
         const next = { ...row, [field]: ['breedte', 'hoogte', 'lengte', 'aantal'].includes(field) ? Number(value) : value } as TimberRow;
-        if (['breedte', 'hoogte', 'lengte', 'profiel'].includes(field)) next.nummer = buildNumber(next);
+        if (field !== 'nummer') next.nummer = buildNumber(next);
         return next;
       });
       return { ...document, rows };
@@ -67,7 +73,7 @@ export default function Home() {
 
   function addRow() {
     if (!activeDocument) return;
-    const row: TimberRow = { id: crypto.randomUUID(), nummer: '0 Wit', breedte: 0, hoogte: 0, lengte: 0, aantal: 1, profiel: '', beschrijving: '', omitWhite: false };
+    const row: TimberRow = { id: crypto.randomUUID(), nummer: '0 Wit', breedte: 0, hoogte: 0, lengte: 0, aantal: 1, profiel: '', omitWhite: false };
     setDocuments((current) => current.map((document) => document.id === activeDocument.id ? { ...document, rows: [...document.rows, row] } : document));
   }
 
@@ -133,9 +139,9 @@ export default function Home() {
 
           {activeDocument.warnings.length > 0 && <div className="warning-list">{activeDocument.warnings.map((warning) => <p key={warning}>Controle nodig: {warning}</p>)}</div>}
 
-          <div className="table-wrap"><table><thead><tr><th>Nummer</th><th>Breedte</th><th>Hoogte</th><th>Lengte</th><th>Aantal</th><th>Profiel</th><th>Beschrijving</th><th aria-label="Acties" /></tr></thead><tbody>
+          <div className="table-wrap"><table><thead><tr><th>Nummer</th><th>Breedte</th><th>Hoogte</th><th>Lengte</th><th>Aantal</th><th>Profiel</th><th aria-label="Acties" /></tr></thead><tbody>
             {activeDocument.rows.map((row) => <tr key={row.id}>
-              {(['nummer', 'breedte', 'hoogte', 'lengte', 'aantal', 'profiel', 'beschrijving'] as const).map((field) => <td key={field}><input aria-label={`${field} van ${row.nummer}`} value={row[field]} inputMode={['breedte', 'hoogte', 'lengte', 'aantal'].includes(field) ? 'numeric' : 'text'} onChange={(event) => updateRow(row.id, field, event.target.value)} /></td>)}
+              {(['nummer', 'breedte', 'hoogte', 'lengte', 'aantal', 'profiel'] as const).map((field) => <td key={field}><input aria-label={`${field} van ${row.nummer}`} value={row[field]} inputMode={['breedte', 'hoogte', 'lengte', 'aantal'].includes(field) ? 'numeric' : 'text'} onChange={(event) => updateRow(row.id, field, event.target.value)} /></td>)}
               <td><button className="row-menu" type="button" onClick={() => removeRow(row.id)} aria-label={`Regel ${row.nummer} verwijderen`}>×</button></td>
             </tr>)}
           </tbody></table></div>
