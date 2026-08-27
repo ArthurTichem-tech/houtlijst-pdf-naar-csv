@@ -73,7 +73,7 @@ export default function Home() {
 
   function addRow() {
     if (!activeDocument) return;
-    const row: TimberRow = { id: crypto.randomUUID(), nummer: '0 Wit', breedte: 0, hoogte: 0, lengte: 0, aantal: 1, profiel: '' };
+    const row: TimberRow = { id: crypto.randomUUID(), nummer: '0 Wit', breedte: 0, hoogte: 0, lengte: 0, aantal: 1, profiel: '', omitWhite: false };
     setDocuments((current) => current.map((document) => document.id === activeDocument.id ? { ...document, rows: [...document.rows, row] } : document));
   }
 
