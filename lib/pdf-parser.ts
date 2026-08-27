@@ -53,14 +53,15 @@ function normalizeProfile(value = '') {
 
 function parseProduct(line: string): Product | null {
   const omitWhite = /\bspouw\s*lat\b/i.test(line);
-  const schoor = line.match(/\bSchoor\s+0*(\d{2,3})\s*x\s*0*(\d{2,3})\s+([A-Za-z]+\d*)/i);
+  const schoren = [...line.matchAll(/\bSchoor\s+0*(\d{2,3})\s*x\s*0*(\d{2,3})\s+([A-Za-z]+\d*)/gi)];
+  const schoor = schoren.at(-1);
   if (schoor) {
     const lengths = [...line.matchAll(/\b(\d{3,5})\s*mm\b/gi)];
     return {
       breedte: Number(schoor[1]),
       hoogte: Number(schoor[2]),
       profiel: normalizeProfile(schoor[3]),
-      omitWhite,
+      omitWhite: true,
       fixedLength: lengths.length ? Number(lengths.at(-1)?.[1]) : undefined,
     };
   }
@@ -151,7 +152,11 @@ export function parseTextLines(lines: string[], fileName: string): ParsedDocumen
     }
 
     if (product.fixedLength && !product.fixedLengthCaptured) {
-      const quantity = line.match(/^\s*(\d+)\s+(?:(?:\d+\/[A-Za-z])|$)/);
+      // Een schoorregel vermeldt de vaste lengte bij het product. De regel
+      // eronder bevat alleen het aantal en een of meer positieverwijzingen.
+      // Die verwijzingen kunnen zowel letters (1/K1) als cijfers (2/12-RZ)
+      // bevatten; een kale totaalregel zonder verwijzing wordt genegeerd.
+      const quantity = line.match(/^\s*(\d+)\s+\d+\/\S+/);
       if (quantity) {
         const row = {
           id: crypto.randomUUID(),
