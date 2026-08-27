@@ -1,3 +1,5 @@
+import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
+
 export type TimberRow = {
   id: string;
   nummer: string;
@@ -67,7 +69,7 @@ function parseProduct(line: string): Product | null {
   // Spouwlat of een projectspecifieke tekst). De eerste maat is de bruto
   // bestelmaat; de laatste maat op dezelfde houtregel is de netto houtmaat.
   const dimensions = [...line.matchAll(/0*(\d{2,3})\s*x\s*0*(\d{2,3})(?:\s*([A-Za-z])(?=\s|$))?/gi)];
-  if (/\bVUR(?:EN)?\b/i.test(line) && dimensions.length >= 2) {
+  if (/\b(?:VUR(?:EN)?|RUW|SLS|FSC)\b/i.test(line) && dimensions.length >= 2) {
     const net = dimensions.at(-1)!;
     return {
       breedte: Number(net[1]),
@@ -117,8 +119,15 @@ export function parseTextLines(lines: string[], fileName: string): ParsedDocumen
   const warnings: string[] = [];
   let product: Product | null = null;
 
-  for (const line of lines) {
-    const nextProduct = parseProduct(line);
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    // Bij OCR of een afwijkende PDF-layout kan de bruto maat op de vorige
+    // tekstregel staan en de netto maat op de huidige. Alleen regels die zelf
+    // een maat bevatten worden samengevoegd, zodat aantallen niet verdwijnen.
+    const continuedProduct = /\d\s*x\s*\d/i.test(line) && index > 0
+      ? parseProduct(`${lines[index - 1]} ${line}`)
+      : null;
+    const nextProduct = parseProduct(line) ?? continuedProduct;
     if (nextProduct) {
       product = nextProduct;
       continue;
@@ -173,14 +182,30 @@ export function parseTextLines(lines: string[], fileName: string): ParsedDocumen
   };
 }
 
-async function recognizeHeader(page: PDFPageProxy) {
-  const viewport = page.getViewport({ scale: 3 });
+async function renderPage(page: PDFPageProxy, scale: number) {
+  const viewport = page.getViewport({ scale });
   const canvas = window.document.createElement('canvas');
   canvas.width = Math.ceil(viewport.width);
   canvas.height = Math.ceil(viewport.height);
   const context = canvas.getContext('2d');
-  if (!context) return [];
+  if (!context) return null;
   await page.render({ canvas, canvasContext: context, viewport }).promise;
+  return canvas;
+}
+
+async function createOcrWorker() {
+  const { createWorker } = await import('tesseract.js');
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+  return createWorker('eng', 1, {
+    workerPath: `${basePath}/tesseract-worker.min.js`,
+    corePath: `${basePath}/tesseract-core`,
+    langPath: `${basePath}/tessdata`,
+  });
+}
+
+async function recognizeHeader(page: PDFPageProxy) {
+  const canvas = await renderPage(page, 3);
+  if (!canvas) return [];
 
   const header = window.document.createElement('canvas');
   header.width = canvas.width;
@@ -191,17 +216,30 @@ async function recognizeHeader(page: PDFPageProxy) {
   headerContext.fillRect(0, 0, header.width, header.height);
   headerContext.drawImage(canvas, 0, 0, header.width, header.height, 0, 0, header.width, header.height);
 
-  const { createWorker, PSM } = await import('tesseract.js');
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-  const worker = await createWorker('eng', 1, {
-    workerPath: `${basePath}/tesseract-worker.min.js`,
-    corePath: `${basePath}/tesseract-core`,
-    langPath: `${basePath}/tessdata`,
-  });
+  const { PSM } = await import('tesseract.js');
+  const worker = await createOcrWorker();
   try {
     await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_BLOCK });
     const result = await worker.recognize(header);
     return result.data.text.split(/\r?\n/).map(cleanText).filter(Boolean);
+  } finally {
+    await worker.terminate();
+  }
+}
+
+async function recognizeScannedPages(pdf: PDFDocumentProxy) {
+  const { PSM } = await import('tesseract.js');
+  const worker = await createOcrWorker();
+  const lines: string[] = [];
+  try {
+    await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+      const canvas = await renderPage(await pdf.getPage(pageNumber), 2);
+      if (!canvas) continue;
+      const result = await worker.recognize(canvas);
+      lines.push(...result.data.text.split(/\r?\n/).map(cleanText).filter(Boolean));
+    }
+    return lines;
   } finally {
     await worker.terminate();
   }
@@ -237,11 +275,23 @@ export async function parsePdf(file: File, onStage?: (message: string) => void):
       .forEach((line) => lines.push(cleanText(line.parts.sort((a, b) => a.x - b.x).map((part) => part.text).join(' '))));
   }
 
-  const parsed = parseTextLines(lines.filter(Boolean), file.name);
+  let parsed = parseTextLines(lines.filter(Boolean), file.name);
+  let scannedLines: string[] = [];
+
+  if (!parsed.rows.length) {
+    onStage?.(`${file.name}: gescande pagina's herkennen…`);
+    try {
+      scannedLines = await recognizeScannedPages(pdf);
+      parsed = parseTextLines([...lines, ...scannedLines].filter(Boolean), file.name);
+    } catch {
+      parsed.warnings.push('De gescande houtregels konden niet automatisch worden herkend; controleer deze PDF handmatig.');
+    }
+  }
+
   if (!parsed.offerte || !parsed.opdrachtgever) {
     onStage?.(`${file.name}: projectkop herkennen…`);
     try {
-      const headerLines = await recognizeHeader(await pdf.getPage(1));
+      const headerLines = scannedLines.length ? scannedLines : await recognizeHeader(await pdf.getPage(1));
       parsed.project ||= captureLabel(headerLines, 'Project');
       parsed.offerte ||= captureLabel(headerLines, 'Offerte');
       parsed.opdrachtgever ||= captureLabel(headerLines, 'Opdrachtgever');
@@ -256,4 +306,3 @@ export async function parsePdf(file: File, onStage?: (message: string) => void):
   }
   return parsed;
 }
-import type { PDFPageProxy } from 'pdfjs-dist';
