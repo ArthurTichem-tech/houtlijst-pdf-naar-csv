@@ -8,7 +8,6 @@ export type TimberRow = {
   lengte: number;
   aantal: number;
   profiel: string;
-  omitWhite?: boolean;
 };
 
 export type ParsedDocument = {
@@ -28,7 +27,6 @@ type Product = {
   breedte: number;
   hoogte: number;
   profiel: string;
-  omitWhite?: boolean;
   fixedLength?: number;
   fixedLengthCaptured?: boolean;
   capturedRows?: number;
@@ -57,6 +55,14 @@ function normalizeProfile(value = '') {
   return value.length === 1 ? value.toUpperCase() : value.toLowerCase();
 }
 
+export function formatProfile(value = '') {
+  const cleaned = cleanText(value);
+  if (!cleaned || /^wit$/i.test(cleaned)) return 'WIT';
+  const model = cleaned.replace(/^model\s+/i, '').replace(/,\s*wit$/i, '').trim();
+  if (!model) return 'WIT';
+  return `Model ${model.length === 1 ? model.toUpperCase() : model}, WIT`;
+}
+
 function productName(product: Product) {
   return `${product.breedte}x${product.hoogte}${product.profiel ? ` ${product.profiel}` : ''}`;
 }
@@ -67,7 +73,6 @@ function recognitionStatus(rows: TimberRow[], warnings: string[], qualityIssues:
 }
 
 function parseProduct(line: string): Product | null {
-  const omitWhite = /\bspouw\s*lat\b/i.test(line);
   const schoren = [...line.matchAll(/\bSchoor\s+0*(\d{2,3})\s*[x×]\s*0*(\d{2,3})\s+([A-Za-z]+\d*)/gi)];
   const schoor = schoren.at(-1);
   if (schoor) {
@@ -76,7 +81,6 @@ function parseProduct(line: string): Product | null {
       breedte: Number(schoor[1]),
       hoogte: Number(schoor[2]),
       profiel: normalizeProfile(schoor[3]),
-      omitWhite: true,
       fixedLength: lengths.length ? Number(lengths.at(-1)?.[1]) : undefined,
     };
   }
@@ -91,7 +95,6 @@ function parseProduct(line: string): Product | null {
       breedte: Number(net[1]),
       hoogte: Number(net[2]),
       profiel: normalizeProfile(net[3]),
-      omitWhite,
     };
   }
 
@@ -101,13 +104,12 @@ function parseProduct(line: string): Product | null {
       breedte: Number(stel[1]),
       hoogte: Number(stel[2]),
       profiel: normalizeProfile(stel[3]),
-      omitWhite,
     };
   }
 
   const sls = line.match(/\bVuren\s+0*(\d{2,3})\s*[x×]\s*0*(\d{2,3})\s+Vuren\s+SLS\b/i);
   if (sls) {
-    return { breedte: Number(sls[1]), hoogte: Number(sls[2]), profiel: '', omitWhite };
+    return { breedte: Number(sls[1]), hoogte: Number(sls[2]), profiel: '' };
   }
 
   const raw = line.match(/\bVUR\s+RUW\s+0*(\d{2,3})\s*[x×]\s*0*(\d{2,3})([A-Za-z])\b/i);
@@ -116,18 +118,14 @@ function parseProduct(line: string): Product | null {
       breedte: Number(raw[1]),
       hoogte: Number(raw[2]),
       profiel: normalizeProfile(raw[3]),
-      omitWhite,
     };
   }
 
   return null;
 }
 
-export function buildNumber(row: Pick<TimberRow, 'breedte' | 'hoogte' | 'lengte' | 'profiel' | 'omitWhite'>) {
-  const parts = [String(row.lengte)];
-  if (row.profiel) parts.push(row.profiel);
-  if (!row.omitWhite && !(row.breedte === 21 && row.hoogte === 48)) parts.push('Wit');
-  return parts.join(' ');
+export function buildNumber(row: Pick<TimberRow, 'lengte' | 'profiel'>) {
+  return `${row.lengte} ${formatProfile(row.profiel)}`;
 }
 
 export function parseTextLines(lines: string[], fileName: string): ParsedDocument {
@@ -194,8 +192,7 @@ export function parseTextLines(lines: string[], fileName: string): ParsedDocumen
         hoogte: product.hoogte,
         lengte: Number(sizedRow[2]),
         aantal: Number(sizedRow[1]),
-        profiel: product.profiel,
-        omitWhite: product.omitWhite,
+        profiel: formatProfile(product.profiel),
       } as TimberRow;
       row.nummer = buildNumber(row);
       rows.push(row);
@@ -217,8 +214,7 @@ export function parseTextLines(lines: string[], fileName: string): ParsedDocumen
           hoogte: product.hoogte,
           lengte: product.fixedLength,
           aantal: Number(quantity[1]),
-          profiel: product.profiel,
-          omitWhite: product.omitWhite,
+          profiel: formatProfile(product.profiel),
         } as TimberRow;
         row.nummer = buildNumber(row);
         rows.push(row);
