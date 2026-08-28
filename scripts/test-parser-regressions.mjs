@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { parseTextLines } from '../lib/pdf-parser.ts';
+import { formatProfile, parseTextLines } from '../lib/pdf-parser.ts';
 
 function signatures(document) {
   return document.rows.map(({ breedte, hoogte, lengte, aantal, profiel, nummer }) =>
@@ -7,9 +7,15 @@ function signatures(document) {
   );
 }
 
+function expectedOutput(signature) {
+  const [dimensions, length, quantity, model] = signature.split('|');
+  const profile = formatProfile(model);
+  return `${dimensions}|${length}|${quantity}|${profile}|${length} ${profile}`;
+}
+
 function verifyPdfVariant({ name, lines, expected }) {
   const document = parseTextLines(lines, name);
-  assert.deepEqual(signatures(document), expected, `${name} veranderde onverwacht`);
+  assert.deepEqual(signatures(document), expected.map(expectedOutput), `${name} veranderde onverwacht`);
 }
 
 verifyPdfVariant({
@@ -71,7 +77,7 @@ const splitProductDescription = parseTextLines([
   'onbekende toekomstige omschrijving vóór netto maat 36x70 mm Vuren FSC',
   '2 1507 mm 2/2',
 ], 'gesplitste-productregel.pdf');
-assert.deepEqual(signatures(splitProductDescription), ['36x70|1507|2||1507 Wit']);
+assert.deepEqual(signatures(splitProductDescription), [expectedOutput('36x70|1507|2||1507 Wit')]);
 
 verifyPdfVariant({
   name: 'W25-0284-04_K61-1031+1033+Vurenhout+FSC+bestellijst.pdf',
@@ -161,7 +167,10 @@ const completeRecognition = parseTextLines([
   '2 1507 mm 2/2',
   '2 3.014 m1',
 ], 'volledig-herkend.pdf');
-assert.deepEqual(signatures(completeRecognition), ['36x70|1507|2|B|1507 B Wit']);
+assert.deepEqual(signatures(completeRecognition), ['36x70|1507|2|Model B, WIT|1507 Model B, WIT']);
+assert.equal(formatProfile('A'), 'Model A, WIT');
+assert.equal(formatProfile('Model B, WIT'), 'Model B, WIT');
+assert.equal(formatProfile(''), 'WIT');
 assert.equal(completeRecognition.recognitionStatus, 'complete');
 assert.deepEqual(completeRecognition.qualityIssues, []);
 
