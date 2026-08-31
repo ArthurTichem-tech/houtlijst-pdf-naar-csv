@@ -1,0 +1,51 @@
+name: Publiceer Windows-app
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Versienummer zonder v, bijvoorbeeld 1.0.1
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Code ophalen
+        uses: actions/checkout@v4
+      - name: pnpm instellen
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+      - name: Node.js instellen
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Packages installeren
+        run: pnpm install --frozen-lockfile
+      - name: Versienummer controleren
+        shell: pwsh
+        run: |
+          if ('${{ inputs.version }}' -notmatch '^\d+\.\d+\.\d+$') {
+            throw 'Gebruik een versienummer zoals 1.0.1'
+          }
+          npm pkg set version='${{ inputs.version }}'
+      - name: PDF-varianten testen
+        run: pnpm run test:parser
+      - name: Desktopwebsite bouwen
+        run: pnpm run build:desktop:web
+      - name: Installer en update publiceren
+        run: pnpm run release:desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.WINDOWS_CERTIFICATE }}
+          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}

@@ -1,6 +1,9 @@
 {
-  "name": "sites-project",
-  "version": "0.1.0",
+  "name": "ter-harmsel-houtlijst-converter",
+  "version": "1.0.0",
+  "description": "Zet houtbestellijsten uit PDF lokaal om naar controleerbare CSV-bestanden.",
+  "author": "Timmerfabriek Ter Harmsel",
+  "main": "desktop/main.mjs",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -9,19 +12,24 @@
     "dev": "vinext dev",
     "build": "vinext build",
     "build:pages": "next build",
+    "build:desktop:web": "cross-env DESKTOP_BUILD=true next build",
+    "build:desktop": "pnpm run build:desktop:web && node node_modules/electron-builder/cli.js --win nsis --publish never",
+    "release:desktop": "node node_modules/electron-builder/cli.js --win nsis --publish always",
+    "desktop:preview": "pnpm run build:desktop:web && electron .",
     "test:parser": "node scripts/test-parser-regressions.mjs",
     "start": "vinext start",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next"
   },
   "dependencies": {
+    "electron-updater": "^6.8.9"
+  },
+  "devDependencies": {
     "@tesseract.js-data/eng": "^1.0.0",
     "next": "16.2.6",
     "pdfjs-dist": "^6.2.108",
     "react": "19.2.6",
     "react-dom": "19.2.6",
-    "tesseract.js": "^7.0.0"
-  },
-  "devDependencies": {
+    "tesseract.js": "^7.0.0",
     "@cloudflare/vite-plugin": "1.37.1",
     "@cloudflare/workers-types": "4.20260515.1",
     "@openai/sites-vite-plugin": "^0.1.0 || ^0.2.0",
@@ -31,6 +39,9 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",
     "@vitejs/plugin-rsc": "0.5.26",
+    "cross-env": "^10.1.0",
+    "electron": "^44.0.0",
+    "electron-builder": "^26.15.3",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.6",
     "react-server-dom-webpack": "19.2.6",
@@ -39,6 +50,46 @@
     "vinext": "1.0.0-beta.3",
     "vite": "8.0.13",
     "wrangler": "4.92.0"
+  },
+  "build": {
+    "appId": "nl.terharmsel.houtlijstconverter",
+    "productName": "Houtlijst PDF naar CSV",
+    "artifactName": "Ter-Harmsel-Houtlijst-Setup-${version}.${ext}",
+    "asar": true,
+    "electronDist": "node_modules/electron/dist",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "desktop/**/*",
+      "out/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "public/icon-512.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Houtlijst PDF naar CSV"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ArthurTichem-tech",
+        "repo": "houtlijst-pdf-naar-csv",
+        "releaseType": "release"
+      }
+    ]
   },
   "type": "module"
 }
