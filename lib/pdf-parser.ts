@@ -325,14 +325,14 @@ async function recognizeHeader(page: PDFPageProxy) {
   }
 }
 
-async function recognizeScannedPages(pdf: PDFDocumentProxy, scale = 2) {
+async function recognizeScannedPages(pdf: PDFDocumentProxy) {
   const { PSM } = await import('tesseract.js');
   const worker = await createOcrWorker();
   const lines: string[] = [];
   try {
     await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-      const canvas = await renderPage(await pdf.getPage(pageNumber), scale);
+      const canvas = await renderPage(await pdf.getPage(pageNumber), 3);
       if (!canvas) continue;
       const result = await worker.recognize(canvas);
       lines.push(...result.data.text.split(/\r?\n/).map(cleanText).filter(Boolean));
@@ -377,24 +377,10 @@ export async function parsePdf(file: File, onStage?: (message: string) => void):
   let scannedLines: string[] = [];
 
   if (!parsed.rows.length || parsed.recognitionStatus === 'incomplete') {
-    onStage?.(`${file.name}: pagina's aanvullend controleren…`);
+    onStage?.(`${file.name}: pagina's scherp controleren…`);
     try {
-      scannedLines = await recognizeScannedPages(pdf, 2);
-      let ocrParsed = parseTextLines(scannedLines.filter(Boolean), file.name);
-
-      // Een OCR-scan kan vooral dicht op elkaar staande regels onderaan een
-      // productblok overslaan. De bestaande totaalcontrole detecteert dat
-      // dynamisch. Alleen dan volgt een scherpere scan; er zijn geen maten of
-      // regelnummers voor specifieke PDF-varianten vastgelegd.
-      if (ocrParsed.recognitionStatus === 'incomplete') {
-        onStage?.(`${file.name}: afwijkende aantallen opnieuw scherp scannen…`);
-        const sharperLines = await recognizeScannedPages(pdf, 3);
-        const sharperParsed = parseTextLines(sharperLines.filter(Boolean), file.name);
-        if (isBetterRecognition(sharperParsed, ocrParsed)) {
-          scannedLines = sharperLines;
-          ocrParsed = sharperParsed;
-        }
-      }
+      scannedLines = await recognizeScannedPages(pdf);
+      const ocrParsed = parseTextLines(scannedLines.filter(Boolean), file.name);
 
       if (isBetterRecognition(ocrParsed, parsed)) {
         ocrParsed.project ||= parsed.project;
