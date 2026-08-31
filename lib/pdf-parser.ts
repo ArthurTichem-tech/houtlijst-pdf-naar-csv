@@ -72,6 +72,32 @@ function recognitionStatus(rows: TimberRow[], warnings: string[], qualityIssues:
   return warnings.length ? 'review' as const : 'complete' as const;
 }
 
+export function isBetterRecognition(candidate: ParsedDocument, current: ParsedDocument) {
+  const statusRank = { incomplete: 0, review: 1, complete: 2 };
+  const candidateQuantity = candidate.rows.reduce((total, row) => total + row.aantal, 0);
+  const currentQuantity = current.rows.reduce((total, row) => total + row.aantal, 0);
+  const candidateScore = [
+    statusRank[candidate.recognitionStatus],
+    -candidate.qualityIssues.length,
+    candidateQuantity,
+    candidate.rows.length,
+    -candidate.warnings.length,
+  ];
+  const currentScore = [
+    statusRank[current.recognitionStatus],
+    -current.qualityIssues.length,
+    currentQuantity,
+    current.rows.length,
+    -current.warnings.length,
+  ];
+
+  return candidateScore.some((value, index) =>
+    value !== currentScore[index] &&
+    candidateScore.slice(0, index).every((earlier, earlierIndex) => earlier === currentScore[earlierIndex]) &&
+    value > currentScore[index],
+  );
+}
+
 function parseProduct(line: string): Product | null {
   const schoren = [...line.matchAll(/\bSchoor\s+0*(\d{2,3})\s*[x×]\s*0*(\d{2,3})\s+([A-Za-z]+\d*)/gi)];
   const schoor = schoren.at(-1);
@@ -298,14 +324,14 @@ async function recognizeHeader(page: PDFPageProxy) {
   }
 }
 
-async function recognizeScannedPages(pdf: PDFDocumentProxy) {
+async function recognizeScannedPages(pdf: PDFDocumentProxy, scale = 2) {
   const { PSM } = await import('tesseract.js');
   const worker = await createOcrWorker();
   const lines: string[] = [];
   try {
     await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-      const canvas = await renderPage(await pdf.getPage(pageNumber), 2);
+      const canvas = await renderPage(await pdf.getPage(pageNumber), scale);
       if (!canvas) continue;
       const result = await worker.recognize(canvas);
       lines.push(...result.data.text.split(/\r?\n/).map(cleanText).filter(Boolean));
@@ -352,12 +378,24 @@ export async function parsePdf(file: File, onStage?: (message: string) => void):
   if (!parsed.rows.length || parsed.recognitionStatus === 'incomplete') {
     onStage?.(`${file.name}: pagina's aanvullend controleren…`);
     try {
-      scannedLines = await recognizeScannedPages(pdf);
-      const ocrParsed = parseTextLines(scannedLines.filter(Boolean), file.name);
-      const statusRank = { incomplete: 0, review: 1, complete: 2 };
-      const ocrIsBetter = ocrParsed.rows.length > parsed.rows.length ||
-        (ocrParsed.rows.length === parsed.rows.length && statusRank[ocrParsed.recognitionStatus] > statusRank[parsed.recognitionStatus]);
-      if (ocrIsBetter) {
+      scannedLines = await recognizeScannedPages(pdf, 2);
+      let ocrParsed = parseTextLines(scannedLines.filter(Boolean), file.name);
+
+      // Een OCR-scan kan vooral dicht op elkaar staande regels onderaan een
+      // productblok overslaan. De bestaande totaalcontrole detecteert dat
+      // dynamisch. Alleen dan volgt een scherpere scan; er zijn geen maten of
+      // regelnummers voor specifieke PDF-varianten vastgelegd.
+      if (ocrParsed.recognitionStatus === 'incomplete') {
+        onStage?.(`${file.name}: afwijkende aantallen opnieuw scherp scannen…`);
+        const sharperLines = await recognizeScannedPages(pdf, 3);
+        const sharperParsed = parseTextLines(sharperLines.filter(Boolean), file.name);
+        if (isBetterRecognition(sharperParsed, ocrParsed)) {
+          scannedLines = sharperLines;
+          ocrParsed = sharperParsed;
+        }
+      }
+
+      if (isBetterRecognition(ocrParsed, parsed)) {
         ocrParsed.project ||= parsed.project;
         ocrParsed.offerte ||= parsed.offerte;
         ocrParsed.opdrachtgever ||= parsed.opdrachtgever;

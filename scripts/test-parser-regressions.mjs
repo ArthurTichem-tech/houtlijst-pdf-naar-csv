@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { formatProfile, parseTextLines } from '../lib/pdf-parser.ts';
+import { formatProfile, isBetterRecognition, parseTextLines } from '../lib/pdf-parser.ts';
 
 function signatures(document) {
   return document.rows.map(({ breedte, hoogte, lengte, aantal, profiel, nummer }) =>
@@ -48,6 +48,38 @@ verifyPdfVariant({
     '38x70|2575|16||2575',
     '38x112|1138|8||1138',
     '38x130|1138|8||1138',
+  ],
+});
+
+verifyPdfVariant({
+  name: 'W25-0172-03_vuren FSC vierkant geschaafd op handelslengte.pdf',
+  lines: [
+    'Omschrijving: loggia kozijnen Epe Project: W25-0172-03',
+    'Opdrachtgever: Nijhuis Apeldoorn Offerte: O25-0163',
+    'VUR RUW 050x200 SPL 40x190 mm H01 Vuren FSC',
+    '20 2600 mm 4/115 1/115a 4/116 1/116a',
+    '20 52.000 m1',
+    'VUR RUW 050x200 SPL 40x190 mm Vuren FSC',
+    '10 3227 mm 4/115 1/115a 2/117 3/117a',
+    '3 1134 mm 3/118a',
+    '4 1129 mm 4/116',
+    '2 1088 mm 2/118',
+    '1 1054 mm 1/116a',
+    '20 43.418 m1',
+    'VUR RUW 063x200 SPL 57x190 mm V102 Vuren FSC',
+    '10 3227 mm 4/115 1/115a 2/117 3/117a',
+    '3 1134 mm 3/118a',
+    '4 1129 mm 4/116',
+    '2 1088 mm 2/118',
+    '1 1054 mm 1/116a',
+    '20 43.418 m1',
+  ],
+  expected: [
+    '40x190|2600|20||2600',
+    '40x190|3227|10||3227', '40x190|1134|3||1134', '40x190|1129|4||1129',
+    '40x190|1088|2||1088', '40x190|1054|1||1054',
+    '57x190|3227|10||3227', '57x190|1134|3||1134', '57x190|1129|4||1129',
+    '57x190|1088|2||1088', '57x190|1054|1||1054',
   ],
 });
 
@@ -190,6 +222,17 @@ const mismatchedTotal = parseTextLines([
 assert.equal(mismatchedTotal.recognitionStatus, 'incomplete');
 assert.match(mismatchedTotal.qualityIssues[0], /3 stuks vermeld, 2 uitgelezen/);
 
+const recoveredTotal = parseTextLines([
+  'Project: W27-0002 Offerte: O27-0002 Opdrachtgever: Testbouw BV',
+  'VUR RUW 050x075 Vulhout Vuren 36x70 mm Vuren FSC',
+  '2 1507 mm 2/2',
+  '1 1400 mm 1/3',
+  '3 4.414 m1',
+], 'herstelde-totaal.pdf');
+assert.equal(recoveredTotal.recognitionStatus, 'complete');
+assert.equal(isBetterRecognition(recoveredTotal, mismatchedTotal), true);
+assert.equal(isBetterRecognition(mismatchedTotal, recoveredTotal), false);
+
 const missingQuantities = parseTextLines([
   'Project: W27-0003 Offerte: O27-0003 Opdrachtgever: Testbouw BV',
   'VUR RUW 050x075 Vulhout Vuren 36x70 mm Vuren FSC',
@@ -204,4 +247,4 @@ assert.equal(missingQuantities.unrecognizedLines.length, 3);
 assert.ok(missingQuantities.qualityIssues.some((issue) => issue.includes('36x70 heeft geen herkende aantallen')));
 assert.ok(missingQuantities.qualityIssues.some((issue) => issue.includes('Mogelijke aantallenregel bij 44x92')));
 
-console.log('Parserregressies voor 5 PDF-varianten en betrouwbaarheidscontroles geslaagd.');
+console.log('Parserregressies voor 6 PDF-varianten en betrouwbaarheidscontroles geslaagd.');
