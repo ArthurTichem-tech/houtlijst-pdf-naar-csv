@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { formatProfile, isBetterRecognition, parseTextLines } from '../lib/pdf-parser.ts';
+import { formatProfile, formatRowProfile, isBetterRecognition, parseTextLines } from '../lib/pdf-parser.ts';
 
 function signatures(document) {
   return document.rows.map(({ breedte, hoogte, lengte, aantal, profiel, nummer }) =>
@@ -9,8 +9,10 @@ function signatures(document) {
 
 function expectedOutput(signature) {
   const [dimensions, length, quantity, model] = signature.split('|');
-  const profile = formatProfile(model);
-  return `${dimensions}|${length}|${quantity}|${profile}|${length} ${profile}`;
+  const [breedte, hoogte] = dimensions.split('x').map(Number);
+  const profile = formatRowProfile({ breedte, hoogte, profiel: model });
+  const number = [length, profile].filter(Boolean).join(' ');
+  return `${dimensions}|${length}|${quantity}|${profile}|${number}`;
 }
 
 function verifyPdfVariant({ name, lines, expected }) {
@@ -49,6 +51,17 @@ verifyPdfVariant({
     '38x112|1138|8||1138',
     '38x130|1138|8||1138',
   ],
+});
+
+verifyPdfVariant({
+  name: 'panlat-021x048.pdf',
+  lines: [
+    'Project: W27-0004 Offerte: O27-0004 Opdrachtgever: Testbouw BV',
+    'VUR RUW 021x048 Panlat 021x048 mm Vuren FSC',
+    '10 2700 mm 10/P',
+    '10 27.000 m1',
+  ],
+  expected: ['21x48|2700|10||2700'],
 });
 
 verifyPdfVariant({
@@ -205,6 +218,8 @@ assert.equal(formatProfile('Model B, WIT'), 'Model B, WIT');
 assert.equal(formatProfile(''), 'WIT');
 assert.equal(formatProfile('schuin'), 'schuin');
 assert.equal(formatProfile('Model schuin, WIT'), 'schuin');
+assert.equal(formatRowProfile({ breedte: 21, hoogte: 48, profiel: '' }), '');
+assert.equal(formatRowProfile({ breedte: 21, hoogte: 48, profiel: 'schuin' }), 'schuin');
 assert.equal(completeRecognition.recognitionStatus, 'complete');
 assert.deepEqual(completeRecognition.qualityIssues, []);
 
@@ -249,4 +264,4 @@ assert.equal(missingQuantities.unrecognizedLines.length, 3);
 assert.ok(missingQuantities.qualityIssues.some((issue) => issue.includes('36x70 heeft geen herkende aantallen')));
 assert.ok(missingQuantities.qualityIssues.some((issue) => issue.includes('Mogelijke aantallenregel bij 44x92')));
 
-console.log('Parserregressies voor 6 PDF-varianten en betrouwbaarheidscontroles geslaagd.');
+console.log('Parserregressies voor 7 PDF-varianten en betrouwbaarheidscontroles geslaagd.');
