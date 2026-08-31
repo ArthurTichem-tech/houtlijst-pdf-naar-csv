@@ -64,6 +64,11 @@ export function formatProfile(value = '') {
   return `Model ${model.length === 1 ? model.toUpperCase() : model}, WIT`;
 }
 
+export function formatRowProfile(row: Pick<TimberRow, 'breedte' | 'hoogte' | 'profiel'>) {
+  const profile = formatProfile(row.profiel);
+  return row.breedte === 21 && row.hoogte === 48 && profile === 'WIT' ? '' : profile;
+}
+
 function productName(product: Product) {
   return `${product.breedte}x${product.hoogte}${product.profiel ? ` ${product.profiel}` : ''}`;
 }
@@ -151,8 +156,8 @@ function parseProduct(line: string): Product | null {
   return null;
 }
 
-export function buildNumber(row: Pick<TimberRow, 'lengte' | 'profiel'>) {
-  return `${row.lengte} ${formatProfile(row.profiel)}`;
+export function buildNumber(row: Pick<TimberRow, 'breedte' | 'hoogte' | 'lengte' | 'profiel'>) {
+  return [String(row.lengte), formatRowProfile(row)].filter(Boolean).join(' ');
 }
 
 export function parseTextLines(lines: string[], fileName: string): ParsedDocument {
@@ -219,8 +224,9 @@ export function parseTextLines(lines: string[], fileName: string): ParsedDocumen
         hoogte: product.hoogte,
         lengte: Number(sizedRow[2]),
         aantal: Number(sizedRow[1]),
-        profiel: formatProfile(product.profiel),
+        profiel: product.profiel,
       } as TimberRow;
+      row.profiel = formatRowProfile(row);
       row.nummer = buildNumber(row);
       rows.push(row);
       product.capturedRows = (product.capturedRows ?? 0) + 1;
@@ -241,8 +247,9 @@ export function parseTextLines(lines: string[], fileName: string): ParsedDocumen
           hoogte: product.hoogte,
           lengte: product.fixedLength,
           aantal: Number(quantity[1]),
-          profiel: formatProfile(product.profiel),
+          profiel: product.profiel,
         } as TimberRow;
+        row.profiel = formatRowProfile(row);
         row.nummer = buildNumber(row);
         rows.push(row);
         product.fixedLengthCaptured = true;

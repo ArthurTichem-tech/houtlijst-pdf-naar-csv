@@ -1,7 +1,7 @@
 'use client';
 
 import { ChangeEvent, DragEvent, useMemo, useRef, useState } from 'react';
-import { buildNumber, formatProfile, parsePdf, ParsedDocument, TimberRow } from '@/lib/pdf-parser';
+import { buildNumber, formatRowProfile, parsePdf, ParsedDocument, TimberRow } from '@/lib/pdf-parser';
 
 const recognitionLabels: Record<ParsedDocument['recognitionStatus'], string> = {
   complete: 'Volledig herkend',
@@ -20,7 +20,7 @@ function csvValue(value: string | number) {
 
 function downloadCsv(document: ParsedDocument) {
   const headers = ['Nummer', 'Breedte', 'Hoogte', 'Lengte', 'Aantal', 'Profiel'];
-  const rows = document.rows.map((row) => [row.nummer, row.breedte, row.hoogte, row.lengte, row.aantal, formatProfile(row.profiel)]);
+  const rows = document.rows.map((row) => [row.nummer, row.breedte, row.hoogte, row.lengte, row.aantal, formatRowProfile(row)]);
   const csv = `\uFEFF${[headers, ...rows].map((row) => row.map(csvValue).join(';')).join('\r\n')}\r\n`;
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
   const anchor = window.document.createElement('a');
@@ -148,7 +148,7 @@ export default function Home() {
 
           <div className="table-wrap"><table><thead><tr><th>Nummer</th><th>Breedte</th><th>Hoogte</th><th>Lengte</th><th>Aantal</th><th>Profiel</th><th aria-label="Acties" /></tr></thead><tbody>
             {activeDocument.rows.map((row) => <tr key={row.id}>
-              {(['nummer', 'breedte', 'hoogte', 'lengte', 'aantal', 'profiel'] as const).map((field) => <td key={field}><input aria-label={`${field} van ${row.nummer}`} value={row[field]} inputMode={['breedte', 'hoogte', 'lengte', 'aantal'].includes(field) ? 'numeric' : 'text'} onChange={(event) => updateRow(row.id, field, event.target.value)} onBlur={field === 'profiel' ? (event) => updateRow(row.id, field, formatProfile(event.target.value)) : undefined} /></td>)}
+              {(['nummer', 'breedte', 'hoogte', 'lengte', 'aantal', 'profiel'] as const).map((field) => <td key={field}><input aria-label={`${field} van ${row.nummer}`} value={row[field]} inputMode={['breedte', 'hoogte', 'lengte', 'aantal'].includes(field) ? 'numeric' : 'text'} onChange={(event) => updateRow(row.id, field, event.target.value)} onBlur={field === 'profiel' ? (event) => updateRow(row.id, field, formatRowProfile({ ...row, profiel: event.target.value })) : undefined} /></td>)}
               <td><button className="row-menu" type="button" onClick={() => removeRow(row.id)} aria-label={`Regel ${row.nummer} verwijderen`}>×</button></td>
             </tr>)}
           </tbody></table></div>
