@@ -60,6 +60,7 @@ export function formatProfile(value = '') {
   if (!cleaned || /^wit$/i.test(cleaned)) return 'WIT';
   const model = cleaned.replace(/^model\s+/i, '').replace(/,\s*wit$/i, '').trim();
   if (!model) return 'WIT';
+  if (/^schuin$/i.test(model)) return 'schuin';
   return `Model ${model.length === 1 ? model.toUpperCase() : model}, WIT`;
 }
 

@@ -203,6 +203,8 @@ assert.deepEqual(signatures(completeRecognition), ['36x70|1507|2|Model B, WIT|15
 assert.equal(formatProfile('A'), 'Model A, WIT');
 assert.equal(formatProfile('Model B, WIT'), 'Model B, WIT');
 assert.equal(formatProfile(''), 'WIT');
+assert.equal(formatProfile('schuin'), 'schuin');
+assert.equal(formatProfile('Model schuin, WIT'), 'schuin');
 assert.equal(completeRecognition.recognitionStatus, 'complete');
 assert.deepEqual(completeRecognition.qualityIssues, []);
 
