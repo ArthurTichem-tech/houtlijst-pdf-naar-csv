@@ -3,7 +3,8 @@ import type { NextConfig } from 'next';
 const repositoryName = process.env.GITHUB_REPOSITORY?.split('/')[1] ?? '';
 const repositoryOwner = process.env.GITHUB_REPOSITORY?.split('/')[0] ?? '';
 const isUserSite = repositoryName.endsWith('.github.io');
-const pagesBasePath = process.env.GITHUB_ACTIONS === 'true' && repositoryName && !isUserSite
+const isDesktopBuild = process.env.DESKTOP_BUILD === 'true';
+const pagesBasePath = !isDesktopBuild && process.env.GITHUB_ACTIONS === 'true' && repositoryName && !isUserSite
   ? `/${repositoryName}`
   : '';
 
