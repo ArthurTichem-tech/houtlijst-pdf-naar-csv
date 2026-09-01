@@ -19,8 +19,10 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ['business', 'productivity', 'utilities'],
     prefer_related_applications: false,
     icons: [
-      { src: `${basePath}/icon-192.png`, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
-      { src: `${basePath}/icon-512.png`, sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+      { src: `${basePath}/icon-192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: `${basePath}/icon-192.png`, sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+      { src: `${basePath}/icon-512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: `${basePath}/icon-512.png`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   };
 }
