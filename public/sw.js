@@ -1,4 +1,4 @@
-const CACHE = 'houtlijst-v2';
+const CACHE = 'houtlijst-v3';
 const ROOT = self.registration.scope;
 const OFFLINE_ASSETS = [
   '',
