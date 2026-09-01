@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import ServiceWorkerRegister from './sw-register';
 
@@ -10,6 +10,12 @@ export const metadata: Metadata = {
   title: 'Houtlijst — PDF naar CSV',
   description: 'Zet houtbestellijsten om naar controleerbare CSV-bestanden.',
   manifest: `${basePath}/manifest.webmanifest`,
+  applicationName: 'Houtlijst PDF naar CSV',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Houtlijst',
+  },
   openGraph: {
     title: 'Houtlijst — PDF naar CSV',
     description: 'Van bestellijst naar een controleerbare CSV.',
@@ -21,6 +27,10 @@ export const metadata: Metadata = {
     description: 'Van bestellijst naar een controleerbare CSV.',
     images: [`${basePath}/og.png`],
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#111820',
 };
 
 export default function RootLayout({

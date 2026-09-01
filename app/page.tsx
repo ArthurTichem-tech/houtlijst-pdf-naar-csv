@@ -2,6 +2,7 @@
 
 import { ChangeEvent, DragEvent, useMemo, useRef, useState } from 'react';
 import { buildNumber, formatRowProfile, parsePdf, ParsedDocument, TimberRow } from '@/lib/pdf-parser';
+import PwaInstall from './pwa-install';
 
 const recognitionLabels: Record<ParsedDocument['recognitionStatus'], string> = {
   complete: 'Volledig herkend',
@@ -107,6 +108,7 @@ export default function Home() {
       <section className="workspace">
         <div className="intro">
           <p className="lede">Voeg één of meerdere PDF-bestellijsten toe. Controleer de netto houtmaten en pas ze aan voordat je exporteert.</p>
+          <PwaInstall />
         </div>
 
         <input ref={inputRef} className="visually-hidden" type="file" accept="application/pdf,.pdf" multiple onChange={(event: ChangeEvent<HTMLInputElement>) => { if (event.target.files) processFiles(event.target.files); event.target.value = ''; }} />

@@ -34,12 +34,19 @@ button, input { font: inherit; }
   display: flex;
   min-height: 52px;
   align-items: center;
+  justify-content: space-between;
+  gap: 18px;
   padding: 11px 18px;
   border-radius: 6px;
   color: #fff;
   background: var(--ink);
 }
 .lede { margin: 0; color: rgba(255, 255, 255, .78); font-size: 14px; line-height: 1.45; }
+.pwa-install { display: flex; flex: 0 0 auto; align-items: center; gap: 14px; padding: 9px 12px; border: 1px solid rgba(255, 255, 255, .32); border-radius: 4px; color: #fff; background: rgba(255, 255, 255, .08); font-size: 11px; font-weight: 800; cursor: pointer; }
+.pwa-install:hover { border-color: #fff; background: rgba(255, 255, 255, .15); }
+.pwa-install span { color: rgba(255, 255, 255, .72); font-size: 15px; }
+.pwa-installed { display: flex; flex: 0 0 auto; align-items: center; gap: 7px; color: rgba(255, 255, 255, .68); font-size: 10px; font-weight: 700; }
+.pwa-installed i { width: 7px; height: 7px; border-radius: 50%; background: #7dcca1; }
 .eyebrow { margin: 0 0 12px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 
 .dropzone {
@@ -139,7 +146,8 @@ td input:focus { outline: none; border-color: var(--info); background: #fff; box
 
 @media (max-width: 700px) {
   .workspace { width: min(100% - 24px, 1180px); padding-top: 12px; }
-  .intro { padding: 13px 16px; }
+  .intro { align-items: flex-start; flex-direction: column; padding: 13px 16px; }
+  .pwa-install { width: 100%; justify-content: space-between; }
   .document-state { display: none; }
   .document-remove { padding-inline: 8px; }
   .panel-heading, .panel-footer { align-items: flex-start; flex-direction: column; }
