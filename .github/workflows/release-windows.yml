@@ -39,6 +39,15 @@ jobs:
             throw 'Gebruik een versienummer zoals 1.0.1'
           }
           npm pkg set version='${{ inputs.version }}'
+      - name: Release-tag klaarzetten
+        shell: pwsh
+        run: |
+          $releaseTag = 'v${{ inputs.version }}'
+          git fetch --tags --force
+          if (-not (git tag --list $releaseTag)) {
+            git tag $releaseTag
+            git push origin $releaseTag
+          }
       - name: PDF-varianten testen
         run: pnpm run test:parser
       - name: Desktopwebsite bouwen
