@@ -32,8 +32,6 @@ jobs:
           cache: pnpm
       - name: Packages installeren
         run: pnpm install --frozen-lockfile
-      - name: Electron-runtime installeren
-        run: pnpm rebuild electron
       - name: Versienummer controleren
         shell: pwsh
         run: |
