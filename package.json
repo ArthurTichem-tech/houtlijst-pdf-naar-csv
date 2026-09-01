@@ -56,7 +56,6 @@
     "productName": "Houtlijst PDF naar CSV",
     "artifactName": "Ter-Harmsel-Houtlijst-Setup-${version}.${ext}",
     "asar": true,
-    "electronDist": "node_modules/electron/dist",
     "directories": {
       "output": "release"
     },
